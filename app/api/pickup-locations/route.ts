@@ -4,8 +4,8 @@ import { PickupLocation } from '@/src/entities/PickupLocation'
 import { CustomAddress } from '@/src/entities/CustomAddress'
 
 export async function GET(): Promise<NextResponse> {
-  const locationRepo = await getRepo(PickupLocation)
-  const addressRepo = await getRepo(CustomAddress)
+  const locationRepo = await getRepo('PickupLocation')
+  const addressRepo = await getRepo('CustomAddress')
 
   const [locations, promotedAddresses] = await Promise.all([
     locationRepo.find({

@@ -15,7 +15,7 @@ export async function PATCH(
 ): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
   const { id } = await params
-  const repo = await getRepo(CustomAddress)
+  const repo = await getRepo('CustomAddress')
   const addr = await repo.findOne({ where: { id } })
   if (!addr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const body = await req.json()

@@ -1,11 +1,10 @@
 import { getRepo } from '@/src/lib/db'
-import { PickupLocation } from '@/src/entities/PickupLocation'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function AdminLocations() {
-  const repo = await getRepo(PickupLocation)
+  const repo = await getRepo('PickupLocation')
   const locations = await repo.find({ order: { sortOrder: 'ASC' } })
 
   return (

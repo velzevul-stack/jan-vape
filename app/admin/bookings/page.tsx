@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getRepo } from '@/src/lib/db'
-import { WebBooking } from '@/src/entities/WebBooking'
+import type { WebBooking } from '@/src/entities/WebBooking'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -35,7 +35,7 @@ export default async function AdminBookings({
   const params = await searchParams
   const filter = params.status ?? 'pending'
 
-  const repo = await getRepo(WebBooking)
+  const repo = await getRepo('WebBooking')
   const where = filter === 'all' ? {} : { status: filter as WebBooking['status'] }
   const bookings = await repo.find({
     relations: { location: true, customAddress: true },

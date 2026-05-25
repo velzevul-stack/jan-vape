@@ -1,13 +1,7 @@
-import { headers } from 'next/headers'
 import Link from 'next/link'
-import { Inter, Barlow_Condensed, JetBrains_Mono } from 'next/font/google'
+import { Barlow_Condensed, JetBrains_Mono } from 'next/font/google'
 import './admin.css'
 
-const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-inter',
-  display: 'swap',
-})
 const barlow = Barlow_Condensed({
   weight: ['600', '700', '800', '900'],
   subsets: ['latin', 'latin-ext'],
@@ -21,13 +15,6 @@ const mono = JetBrains_Mono({
   display: 'swap',
 })
 
-function checkAuth(authHeader: string | null): boolean {
-  const expected = process.env.ADMIN_BASIC_AUTH ?? ''
-  if (!expected || !authHeader?.startsWith('Basic ')) return false
-  const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8')
-  return decoded === expected
-}
-
 const NAV = [
   { href: '/admin', label: 'Сводка', icon: 'gauge' as const },
   { href: '/admin/bookings', label: 'Брони', icon: 'calendar' as const },
@@ -36,59 +23,44 @@ const NAV = [
   { href: '/admin/blocked-slots', label: 'Блокировки', icon: 'lock' as const },
 ]
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const hdrs = await headers()
-  const auth = hdrs.get('authorization')
-
-  if (!checkAuth(auth)) {
-    return new Response('Authentication required', {
-      status: 401,
-      headers: {
-        'WWW-Authenticate': 'Basic realm="Admin"',
-        'Content-Type': 'text/plain',
-      },
-    }) as unknown as React.ReactElement
-  }
-
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
-      <body className={`${inter.variable} ${barlow.variable} ${mono.variable} admin-shell`}>
-        <div className="admin-bg-glow" aria-hidden />
-        <div className="admin-grid">
-          <aside className="admin-sidebar">
-            <Link href="/admin" className="admin-brand">
-              <span className="admin-brand-logo">J</span>
-              <span className="admin-brand-text">
-                <span className="admin-brand-title">JAN-VAPE</span>
-                <span className="admin-brand-sub">admin panel</span>
-              </span>
-            </Link>
+    <div className={`${barlow.variable} ${mono.variable} admin-shell`}>
+      <div className="admin-bg-glow" aria-hidden />
+      <div className="admin-grid">
+        <aside className="admin-sidebar">
+          <Link href="/admin" className="admin-brand">
+            <span className="admin-brand-logo">J</span>
+            <span className="admin-brand-text">
+              <span className="admin-brand-title">JAN-VAPE</span>
+              <span className="admin-brand-sub">admin panel</span>
+            </span>
+          </Link>
 
-            <nav className="admin-nav">
-              {NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="admin-nav-link">
-                  <NavIcon name={item.icon} />
-                  <span>{item.label}</span>
-                </Link>
-              ))}
-            </nav>
+          <nav className="admin-nav">
+            {NAV.map((item) => (
+              <Link key={item.href} href={item.href} className="admin-nav-link">
+                <NavIcon name={item.icon} />
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </nav>
 
-            <div className="admin-sidebar-footer">
-              <div className="admin-status-pill">
-                <span className="admin-status-dot" />
-                onboarded
-              </div>
-              <p className="admin-hint">
-                Все данные синхронизируются с приложением Vapestore и фронтом jan-vape.com.
-              </p>
+          <div className="admin-sidebar-footer">
+            <div className="admin-status-pill">
+              <span className="admin-status-dot" />
+              onboarded
             </div>
-          </aside>
-          <main className="admin-main">
-            <div className="admin-main-inner">{children}</div>
-          </main>
-        </div>
-      </body>
-    </html>
+            <p className="admin-hint">
+              Все данные синхронизируются с приложением Vapestore и фронтом jan-vape.com.
+            </p>
+          </div>
+        </aside>
+        <main className="admin-main">
+          <div className="admin-main-inner">{children}</div>
+        </main>
+      </div>
+    </div>
   )
 }
 

@@ -3,7 +3,6 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
-import { BlockedSlot } from '@/src/entities/BlockedSlot'
 
 const SlotSchema = z.object({
   locationId: z.string().uuid().optional(),
@@ -15,7 +14,7 @@ const SlotSchema = z.object({
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
-  const repo = await getRepo(BlockedSlot)
+  const repo = await getRepo('BlockedSlot')
   const slots = await repo.find({
     relations: { location: true, customAddress: true },
     order: { startsAt: 'ASC' },
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
   }
-  const repo = await getRepo(BlockedSlot)
+  const repo = await getRepo('BlockedSlot')
   const slot = repo.create({
     ...parsed.data,
     startsAt: new Date(parsed.data.startsAt),

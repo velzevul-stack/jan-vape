@@ -22,7 +22,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const { status, limit, offset } = parsed.data
 
-  const repo = await getRepo(WebBooking)
+  const repo = await getRepo('WebBooking')
   const qb = repo
     .createQueryBuilder('wb')
     .leftJoinAndSelect('wb.location', 'loc')

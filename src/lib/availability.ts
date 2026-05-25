@@ -1,13 +1,12 @@
 import { getRepo } from './db'
-import { WebBooking } from '../entities/WebBooking'
-import { ProductSnapshot } from '../entities/ProductSnapshot'
+import type { ProductSnapshot } from '../entities/ProductSnapshot'
 
 export async function getAvailableOnPost(productId: string): Promise<number> {
-  const productRepo = await getRepo(ProductSnapshot)
+  const productRepo = await getRepo('ProductSnapshot')
   const product = await productRepo.findOne({ where: { id: productId } })
   if (!product) return 0
 
-  const bookingRepo = await getRepo(WebBooking)
+  const bookingRepo = await getRepo('WebBooking')
   const activeBookings = await bookingRepo
     .createQueryBuilder('wb')
     .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
@@ -27,7 +26,7 @@ export async function getAvailabilityMap(
 ): Promise<Map<string, number>> {
   if (products.length === 0) return new Map()
 
-  const bookingRepo = await getRepo(WebBooking)
+  const bookingRepo = await getRepo('WebBooking')
   const activeBookings = await bookingRepo
     .createQueryBuilder('wb')
     .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })

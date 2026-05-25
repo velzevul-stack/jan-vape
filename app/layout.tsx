@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Barlow_Condensed, JetBrains_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import { CartProvider } from '@/lib/context/cart-context'
-import { BookingProvider } from '@/lib/context/booking-context'
 import './globals.css'
 
 const inter = Inter({
@@ -63,12 +60,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className="bg-[#0B0D10]">
       <body className={`${inter.variable} ${barlowCondensed.variable} ${jetbrainsMono.variable} font-sans antialiased min-h-screen`}>
-        <CartProvider>
-          <BookingProvider>
-            {children}
-          </BookingProvider>
-        </CartProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {children}
       </body>
     </html>
   )

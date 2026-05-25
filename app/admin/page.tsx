@@ -1,14 +1,12 @@
 import { getRepo } from '@/src/lib/db'
-import { WebBooking } from '@/src/entities/WebBooking'
-import { SyncCursor } from '@/src/entities/SyncCursor'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function AdminDashboard() {
   const [bookingRepo, cursorRepo] = await Promise.all([
-    getRepo(WebBooking),
-    getRepo(SyncCursor),
+    getRepo('WebBooking'),
+    getRepo('SyncCursor'),
   ])
 
   const [pendingCount, confirmedCount, cancelledCount, completedCount, cursors] = await Promise.all([

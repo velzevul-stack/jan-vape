@@ -1,11 +1,11 @@
 import { getRepo } from '@/src/lib/db'
-import { BlockedSlot } from '@/src/entities/BlockedSlot'
+import type { BlockedSlot } from '@/src/entities/BlockedSlot'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function AdminBlockedSlots() {
-  const repo = await getRepo(BlockedSlot)
+  const repo = await getRepo('BlockedSlot')
   const slots = await repo.find({
     relations: { location: true, customAddress: true },
     order: { startsAt: 'ASC' },

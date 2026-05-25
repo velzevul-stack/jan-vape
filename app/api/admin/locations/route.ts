@@ -20,7 +20,7 @@ const LocationSchema = z.object({
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
-  const repo = await getRepo(PickupLocation)
+  const repo = await getRepo('PickupLocation')
   const locations = await repo.find({ order: { sortOrder: 'ASC' } })
   return NextResponse.json({ locations })
 }
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
   }
-  const repo = await getRepo(PickupLocation)
+  const repo = await getRepo('PickupLocation')
   const loc = repo.create(parsed.data)
   await repo.save(loc)
   revalidatePath('/admin/locations')

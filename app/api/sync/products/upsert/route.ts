@@ -3,7 +3,6 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
-import { ProductSnapshot } from '@/src/entities/ProductSnapshot'
 
 const ProductSchema = z.object({
   externalId: z.number().int().positive(),
@@ -33,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
     }
 
-    const repo = await getRepo(ProductSnapshot)
+    const repo = await getRepo('ProductSnapshot')
     const incomingIds = parsed.data.products.map((p) => p.externalId)
 
     await Promise.all(

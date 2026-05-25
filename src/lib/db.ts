@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import { DataSource } from 'typeorm'
+import { DataSource, type Repository } from 'typeorm'
 import { ProductSnapshot } from '../entities/ProductSnapshot'
 import { PickupLocation } from '../entities/PickupLocation'
 import { CustomAddress } from '../entities/CustomAddress'
@@ -9,7 +9,7 @@ import { BlockedSlot } from '../entities/BlockedSlot'
 import { SyncCursor } from '../entities/SyncCursor'
 import { IdempotencyKey } from '../entities/IdempotencyKey'
 
-const entities = [
+export const entityRegistry = {
   ProductSnapshot,
   PickupLocation,
   CustomAddress,
@@ -18,7 +18,13 @@ const entities = [
   BlockedSlot,
   SyncCursor,
   IdempotencyKey,
-]
+} as const
+
+export type EntityKey = keyof typeof entityRegistry
+
+export type EntityInstance<K extends EntityKey> = InstanceType<(typeof entityRegistry)[K]>
+
+const entities = Object.values(entityRegistry)
 
 declare global {
   var __dataSource: DataSource | undefined
@@ -50,9 +56,14 @@ export async function getDataSource(): Promise<DataSource> {
   return ds
 }
 
-export async function getRepo<T extends object>(
-  entity: new () => T,
-): Promise<import('typeorm').Repository<T>> {
+export async function getRepo<K extends EntityKey>(
+  key: K,
+): Promise<Repository<EntityInstance<K>>> {
   const ds = await getDataSource()
-  return ds.getRepository(entity)
+  return ds.getRepository(entityRegistry[key]) as Repository<EntityInstance<K>>
+}
+
+export async function getEntityManager() {
+  const ds = await getDataSource()
+  return ds.manager
 }

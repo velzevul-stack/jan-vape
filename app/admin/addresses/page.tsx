@@ -1,11 +1,10 @@
 import { getRepo } from '@/src/lib/db'
-import { CustomAddress } from '@/src/entities/CustomAddress'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function AdminAddresses() {
-  const repo = await getRepo(CustomAddress)
+  const repo = await getRepo('CustomAddress')
   const addresses = await repo.find({ order: { salesCount: 'DESC' }, take: 200 })
 
   return (

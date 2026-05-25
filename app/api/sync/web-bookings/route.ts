@@ -15,7 +15,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     500,
   )
 
-  const repo = await getRepo(WebBooking)
+  const repo = await getRepo('WebBooking')
   const since = new Date(sinceMs || 0)
 
   const bookings = await repo.find({

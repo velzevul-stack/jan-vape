@@ -37,9 +37,27 @@ function checkRateLimit(ip: string): boolean {
   return entry.count <= RATE_LIMIT_MAX
 }
 
+function verifyBasicAuth(req: NextRequest): boolean {
+  const expected = process.env.ADMIN_BASIC_AUTH ?? ''
+  if (!expected) return false
+  const auth = req.headers.get('authorization') ?? ''
+  if (!auth.startsWith('Basic ')) return false
+  const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8')
+  return decoded === expected
+}
+
 export function proxy(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl
   const origin = req.headers.get('origin') ?? ''
+
+  if (pathname.startsWith('/admin') && !verifyBasicAuth(req)) {
+    return new NextResponse('Authentication required', {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': 'Basic realm="Admin"',
+      },
+    })
+  }
 
   const res = NextResponse.next()
 

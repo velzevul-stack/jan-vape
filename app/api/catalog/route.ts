@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getRepo } from '@/src/lib/db'
-import { ProductSnapshot } from '@/src/entities/ProductSnapshot'
 import { getAvailabilityMap } from '@/src/lib/availability'
 
 const QuerySchema = z.object({
@@ -21,7 +20,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const { category, taste, strength, q } = parsed.data
 
-  const repo = await getRepo(ProductSnapshot)
+  const repo = await getRepo('ProductSnapshot')
   const qb = repo
     .createQueryBuilder('p')
     .where('p.isHidden = false')

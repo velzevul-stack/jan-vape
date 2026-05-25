@@ -8,7 +8,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const q = req.nextUrl.searchParams.get('q') ?? ''
   if (q.length < 2) return NextResponse.json({ suggestions: [] })
 
-  const repo = await getRepo(CustomAddress)
+  const repo = await getRepo('CustomAddress')
   const normalized = normalizeAddress(q)
 
   const results = await repo.find({

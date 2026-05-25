@@ -1,7 +1,6 @@
 import { createHmac, timingSafeEqual, createHash } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getRepo } from './db'
-import { IdempotencyKey } from '../entities/IdempotencyKey'
 
 const TIMESTAMP_WINDOW_MS = 5 * 60 * 1000
 const NONCE_CACHE = new Map<string, number>()
@@ -76,7 +75,7 @@ export async function withIdempotency(
     return NextResponse.json(result.body, { status: result.status })
   }
 
-  const repo = await getRepo(IdempotencyKey)
+  const repo = await getRepo('IdempotencyKey')
   const existing = await repo.findOne({ where: { key } })
   if (existing) {
     return NextResponse.json(existing.responseBody, { status: existing.responseStatus })

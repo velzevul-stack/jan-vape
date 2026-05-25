@@ -40,9 +40,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const { idempotencyKey, sales } = parsed.data
 
     return withIdempotency(idempotencyKey, async () => {
-      const saleRepo = await getRepo(WebSale)
-      const addrRepo = await getRepo(CustomAddress)
-      const locRepo = await getRepo(PickupLocation)
+      const saleRepo = await getRepo('WebSale')
+      const addrRepo = await getRepo('CustomAddress')
+      const locRepo = await getRepo('PickupLocation')
 
       let saved = 0
 

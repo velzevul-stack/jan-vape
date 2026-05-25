@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
-import { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
+import type { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
 
 const UpdateSchema = z.object({
   updates: z.array(
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
     }
 
-    const repo = await getRepo(WebBooking)
+    const repo = await getRepo('WebBooking')
     let updated = 0
 
     for (const u of parsed.data.updates) {

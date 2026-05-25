@@ -37,7 +37,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   let location: PickupLocation | null = null
   if (locationId) {
-    const repo = await getRepo(PickupLocation)
+    const repo = await getRepo('PickupLocation')
     location = await repo.findOne({ where: { id: locationId } })
   }
   if (!location) {
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const dayStart = new Date(`${date}T00:00:00`)
   const dayEnd = new Date(`${date}T23:59:59`)
 
-  const bookingRepo = await getRepo(WebBooking)
+  const bookingRepo = await getRepo('WebBooking')
   const bookings = await bookingRepo
     .createQueryBuilder('wb')
     .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     )
     .getMany()
 
-  const blockedRepo = await getRepo(BlockedSlot)
+  const blockedRepo = await getRepo('BlockedSlot')
   const blockedSlots = await blockedRepo
     .createQueryBuilder('bs')
     .where('bs.startsAt < :end AND bs.endsAt > :start', {

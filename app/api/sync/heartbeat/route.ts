@@ -25,7 +25,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const { clientId, appVersion, lastLocalSyncAt } = parsed.data
 
-    const repo = await getRepo(SyncCursor)
+    const repo = await getRepo('SyncCursor')
     let cursor = await repo.findOne({ where: { clientId } })
 
     if (!cursor) {
