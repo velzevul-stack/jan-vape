@@ -56,7 +56,11 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
   const scheduledDate = snapshot ? new Date(snapshot.scheduledAt) : null
   const dateLabel = scheduledDate ? formatDate(scheduledDate) : null
   const timeLabel = scheduledDate
-    ? scheduledDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    ? scheduledDate.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Minsk',
+      })
     : null
 
   if (!snapshot) {

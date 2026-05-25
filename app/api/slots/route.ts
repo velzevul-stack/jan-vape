@@ -4,6 +4,7 @@ import { getRepo } from '@/src/lib/db'
 import { PickupLocation } from '@/src/entities/PickupLocation'
 import { WebBooking } from '@/src/entities/WebBooking'
 import { BlockedSlot } from '@/src/entities/BlockedSlot'
+import { storeDayBounds } from '@/lib/dates'
 import { generateSlots } from '@/src/lib/slots'
 
 const QuerySchema = z.object({
@@ -44,8 +45,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     location = DEFAULT_LOCATION
   }
 
-  const dayStart = new Date(`${date}T00:00:00`)
-  const dayEnd = new Date(`${date}T23:59:59`)
+  const { start: dayStart, end: dayEnd } = storeDayBounds(date)
 
   const bookingRepo = await getRepo('WebBooking')
   const bookings = await bookingRepo

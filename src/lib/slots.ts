@@ -1,6 +1,7 @@
 import { PickupLocation } from '../entities/PickupLocation'
 import { BlockedSlot } from '../entities/BlockedSlot'
 import { WebBooking } from '../entities/WebBooking'
+import { storeSlotInstant } from '@/lib/dates'
 
 export interface SlotInfo {
   time: string
@@ -39,7 +40,7 @@ export function generateSlots(
     const minute = total % 60
     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 
-    const slotStart = new Date(`${date}T${timeStr}:00`)
+    const slotStart = storeSlotInstant(date, timeStr)
     const slotEnd = new Date(slotStart.getTime() + step * 60 * 1000)
 
     if (slotStart < minAvailable) {

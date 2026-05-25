@@ -1,3 +1,5 @@
+import { formatCalendarDateDisplay, formatCalendarDateISO } from './dates'
+
 export type ProductCategory = 'liquid' | 'snus' | 'disposable' | 'vape' | 'consumable'
 
 export interface Product {
@@ -78,12 +80,11 @@ export function formatPrice(price: number): string {
 }
 
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  return formatCalendarDateDisplay(date)
 }
 
 export function formatDateISO(date: Date): string {
-  return date.toISOString().split('T')[0]
+  return formatCalendarDateISO(date)
 }
 
 export const categoryLabels: Record<ProductCategory, string> = {

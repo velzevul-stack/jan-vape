@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, MapPin, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice, formatDate } from '@/lib/mock-data'
+import { buildStoreDateTime } from '@/lib/dates'
 import { useCart } from '@/lib/context/cart-context'
 import { useBooking } from '@/lib/context/booking-context'
 import { Header } from '@/components/layout/Header'
@@ -51,7 +52,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true)
     setSubmitError(null)
 
-    const scheduledAt = new Date(`${pickupDate}T${pickupTime}:00`).toISOString()
+    const scheduledAt = buildStoreDateTime(pickupDate, pickupTime).toISOString()
 
     const body = {
       ...(pickupLocationId ? { pickupLocationId } : {}),
@@ -105,7 +106,7 @@ export default function CheckoutPage() {
           customerName: customerName.trim(),
           customerTelegram: normalizeTelegramUsername(customerTelegram),
           locationLabel,
-          scheduledAt: new Date(`${pickupDate}T${pickupTime}:00`).toISOString(),
+          scheduledAt: buildStoreDateTime(pickupDate, pickupTime).toISOString(),
           items: items.map(i => ({
             brand: i.product.brand,
             flavor: i.product.flavor,
