@@ -20,7 +20,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const bookings = await repo.find({
     where: { updatedAt: MoreThanOrEqual(since) },
-    relations: ['location', 'customAddress'],
+    relations: { location: true, customAddress: true },
     order: { updatedAt: 'ASC' },
     take: limit,
   })

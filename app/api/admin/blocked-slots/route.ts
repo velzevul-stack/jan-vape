@@ -16,7 +16,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
   const repo = await getRepo(BlockedSlot)
   const slots = await repo.find({
-    relations: ['location', 'customAddress'],
+    relations: { location: true, customAddress: true },
     order: { startsAt: 'ASC' },
   })
   return NextResponse.json({ slots })

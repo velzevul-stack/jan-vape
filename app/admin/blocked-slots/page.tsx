@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export default async function AdminBlockedSlots() {
   const repo = await getRepo(BlockedSlot)
   const slots = await repo.find({
-    relations: ['location', 'customAddress'],
+    relations: { location: true, customAddress: true },
     order: { startsAt: 'ASC' },
   })
 

@@ -13,7 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function AdminBookings() {
   const repo = await getRepo(WebBooking)
   const bookings = await repo.find({
-    relations: ['location', 'customAddress'],
+    relations: { location: true, customAddress: true },
     order: { scheduledAt: 'ASC' },
     take: 100,
     where: { status: 'pending' },
