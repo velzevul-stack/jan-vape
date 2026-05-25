@@ -1,21 +1,27 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import { Barlow_Condensed } from 'next/font/google'
+import { Inter, Barlow_Condensed, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { CartProvider } from '@/lib/context/cart-context'
 import { BookingProvider } from '@/lib/context/booking-context'
 import './globals.css'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-inter',
   display: 'swap',
 })
 
-const barlowCondensed = Barlow_Condensed({ 
-  weight: ['600', '700', '800'],
-  subsets: ['latin'],
+const barlowCondensed = Barlow_Condensed({
+  weight: ['600', '700', '800', '900'],
+  subsets: ['latin', 'latin-ext'],
   variable: '--font-barlow',
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-jetbrains',
   display: 'swap',
 })
 
@@ -44,7 +50,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#121212',
+  themeColor: '#0B0D10',
   width: 'device-width',
   initialScale: 1,
 }
@@ -55,8 +61,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className="bg-[#121212]">
-      <body className={`${inter.variable} ${barlowCondensed.variable} font-sans antialiased min-h-screen`}>
+    <html lang="ru" className="bg-[#0B0D10]">
+      <body className={`${inter.variable} ${barlowCondensed.variable} ${jetbrainsMono.variable} font-sans antialiased min-h-screen`}>
         <CartProvider>
           <BookingProvider>
             {children}

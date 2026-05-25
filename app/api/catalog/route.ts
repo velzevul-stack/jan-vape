@@ -28,11 +28,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .andWhere('p.deletedAt IS NULL')
 
   if (category) {
-    qb.andWhere('p.category = :category', { category })
+    const cats = category.split(',').map((c) => c.trim()).filter(Boolean)
+    if (cats.length === 1) {
+      qb.andWhere('p.category = :category', { category: cats[0] })
+    } else if (cats.length > 1) {
+      qb.andWhere('p.category IN (:...cats)', { cats })
+    }
   }
 
   if (strength) {
-    qb.andWhere('p.strength = :strength', { strength })
+    const strengths = strength.split(',').map((s) => s.trim()).filter(Boolean)
+    if (strengths.length === 1) {
+      qb.andWhere('p.strength = :strength', { strength: strengths[0] })
+    } else if (strengths.length > 1) {
+      qb.andWhere('p.strength IN (:...strengths)', { strengths })
+    }
   }
 
   if (q) {
@@ -72,5 +82,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }))
     .filter((p) => p.availableOnPost > 0)
 
-  return NextResponse.json({ products: result })
+  const strengthValues = Array.from(
+    new Set(
+      result
+        .filter((p) => p.category === 'liquid' || p.category === 'disposable' || p.category === 'snus')
+        .map((p) => String(p.strength ?? '').trim())
+        .filter((s) => s.length > 0),
+    ),
+  ).sort((a, b) => {
+    const an = parseFloat(a)
+    const bn = parseFloat(b)
+    if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn
+    return a.localeCompare(b)
+  })
+
+  return NextResponse.json({ products: result, strengthValues })
 }

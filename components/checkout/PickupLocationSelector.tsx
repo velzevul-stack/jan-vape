@@ -159,7 +159,7 @@ export function PickupLocationSelector({
             <input
               ref={inputRef}
               type="text"
-              placeholder="Введите адрес или место встречи"
+              placeholder="Например: ул. Ленина 12, кв 5"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               onKeyDown={(e) => {
@@ -169,7 +169,8 @@ export function PickupLocationSelector({
               onBlur={() => {
                 setTimeout(() => setShowDropdown(false), 150)
               }}
-              className="w-full rounded-2xl border-2 border-accent-primary/40 bg-card py-3 pl-10 pr-10 text-sm text-text-on-dark placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
+              autoComplete="street-address"
+              className="h-14 w-full rounded-2xl border-2 border-accent-primary/40 bg-card-inner py-3 pl-10 pr-10 text-base text-text-on-dark caret-accent-primary placeholder:text-text-faint focus:border-accent-primary focus:bg-card-inner focus:outline-none"
             />
             <button
               type="button"
@@ -181,20 +182,20 @@ export function PickupLocationSelector({
           </div>
 
           {showDropdown && suggestions.length > 0 && (
-            <ul className="rounded-2xl border border-border-subtle/20 bg-card shadow-xl">
+            <ul className="animate-float-up overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-2xl shadow-black/40">
               {suggestions.map((s) => (
-                <li key={s.id}>
+                <li key={s.id} className="border-b border-border-on-dark last:border-b-0">
                   <button
                     type="button"
                     onMouseDown={() => {
                       setQuery(s.label)
                       commitCustomAddress(s.label)
                     }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-text-on-dark hover:bg-elevated"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-text-on-dark transition-colors hover:bg-card-inner"
                   >
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-accent-primary" />
-                    <span>{s.label}</span>
-                    <span className="ml-auto text-xs text-text-muted">{s.salesCount}×</span>
+                    <span className="truncate">{s.label}</span>
+                    <span className="ml-auto shrink-0 text-xs text-text-muted tabular-nums">{s.salesCount}×</span>
                   </button>
                 </li>
               ))}

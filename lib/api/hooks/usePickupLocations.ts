@@ -11,10 +11,14 @@ interface PickupLocationsResponse {
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export function usePickupLocations() {
-  const { data, error, isLoading } = useSWR<PickupLocationsResponse>(
+  const { data, error, isLoading, mutate } = useSWR<PickupLocationsResponse>(
     '/api/pickup-locations',
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+    {
+      refreshInterval: 30_000,
+      revalidateOnFocus: true,
+      dedupingInterval: 5_000,
+    },
   )
 
   return {
@@ -22,6 +26,7 @@ export function usePickupLocations() {
     promotedAddresses: data?.promotedAddresses ?? [],
     isLoading,
     error,
+    refresh: mutate,
   }
 }
 

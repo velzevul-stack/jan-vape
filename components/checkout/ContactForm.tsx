@@ -1,6 +1,6 @@
 'use client'
 
-import { Send } from 'lucide-react'
+import { Send, User, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { useBooking } from '@/lib/context/booking-context'
@@ -37,71 +37,119 @@ export function ContactForm() {
 
   return (
     <div className="w-full">
-      <h3 className="mb-4 font-display text-sm font-bold tracking-wider text-text-muted">
+      <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
         КОНТАКТНЫЕ ДАННЫЕ
       </h3>
 
-      <div className="space-y-4 rounded-3xl bg-card p-6">
-        <div>
-          <label htmlFor="name" className="mb-2 block text-sm font-medium text-text-on-card">
-            Имя <span className="text-status-warning">*</span>
-          </label>
+      <div className="space-y-4 rounded-3xl border border-border-on-dark bg-elevated p-5">
+        <Field
+          id="name"
+          label="Имя"
+          required
+          icon={<User className="h-5 w-5" />}
+        >
           <input
             id="name"
             type="text"
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
             placeholder="Как к вам обращаться"
-            className={cn(
-              'h-14 w-full rounded-2xl bg-card-inner px-4 text-text-on-dark',
-              'placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary'
-            )}
+            autoComplete="given-name"
+            className={inputClasses}
           />
-        </div>
+        </Field>
+
+        <Field
+          id="telegram"
+          label="Telegram"
+          required
+          icon={<Send className="h-5 w-5" />}
+          hint="Напишем о готовности заказа"
+        >
+          <input
+            id="telegram"
+            type="text"
+            inputMode="text"
+            autoComplete="username"
+            value={customerTelegram}
+            onChange={handleTelegramChange}
+            onBlur={handleTelegramBlur}
+            placeholder="@username"
+            className={inputClasses}
+          />
+        </Field>
 
         <div>
-          <label htmlFor="telegram" className="mb-2 block text-sm font-medium text-text-on-card">
-            Telegram <span className="text-status-warning">*</span>
+          <label
+            htmlFor="comment"
+            className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-text-on-dark"
+          >
+            Комментарий
+            <span className="text-xs text-text-faint">(необязательно)</span>
           </label>
           <div className="relative">
-            <Send className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted" />
-            <input
-              id="telegram"
-              type="text"
-              inputMode="text"
-              autoComplete="username"
-              value={customerTelegram}
-              onChange={handleTelegramChange}
-              onBlur={handleTelegramBlur}
-              placeholder="@username"
+            <MessageSquare className="pointer-events-none absolute left-4 top-3.5 z-10 h-5 w-5 text-text-muted" />
+            <textarea
+              id="comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Дополнительная информация для продавца"
+              rows={3}
               className={cn(
-                'h-14 w-full rounded-2xl bg-card-inner pl-12 pr-4 text-text-on-dark',
-                'placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary'
+                'w-full resize-none rounded-2xl border border-transparent bg-card-inner px-4 pl-12 py-3 text-base text-text-on-dark caret-accent-primary',
+                'placeholder:text-text-faint focus:border-accent-primary/50 focus:bg-card-deep focus:outline-none focus:ring-2 focus:ring-accent-mist',
+                'transition-colors leading-relaxed',
               )}
             />
           </div>
-          <p className="mt-1.5 text-xs text-text-muted">
-            Укажите ник в Telegram — напишем о готовности заказа
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="comment" className="mb-2 block text-sm font-medium text-text-on-card">
-            Комментарий <span className="text-text-muted">(необязательно)</span>
-          </label>
-          <textarea
-            id="comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Дополнительная информация для продавца"
-            rows={3}
-            className={cn(
-              'w-full resize-none rounded-2xl bg-card-inner px-4 py-3 text-text-on-dark',
-              'placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary'
-            )}
-          />
         </div>
       </div>
+    </div>
+  )
+}
+
+const inputClasses = cn(
+  'h-14 w-full rounded-2xl border border-transparent bg-card-inner px-4 pl-12 text-base text-text-on-dark caret-accent-primary',
+  'placeholder:text-text-faint focus:border-accent-primary/50 focus:bg-card-deep focus:outline-none focus:ring-2 focus:ring-accent-mist',
+  'transition-colors',
+)
+
+function Field({
+  id,
+  label,
+  required,
+  icon,
+  hint,
+  children,
+}: {
+  id: string
+  label: string
+  required?: boolean
+  icon?: React.ReactNode
+  hint?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-text-on-dark"
+      >
+        {label}
+        {required && <span className="text-status-warning">*</span>}
+        {hint && !required && <span className="text-xs text-text-faint">{hint}</span>}
+      </label>
+      <div className="relative">
+        {icon && (
+          <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-text-muted">
+            {icon}
+          </span>
+        )}
+        {children}
+      </div>
+      {required && hint && (
+        <p className="mt-1.5 text-xs text-text-faint">{hint}</p>
+      )}
     </div>
   )
 }

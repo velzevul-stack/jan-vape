@@ -29,9 +29,10 @@ export function useSlots({ locationId, customAddress, date, enabled = true }: Us
   const url = shouldFetch ? `/api/slots?${searchParams.toString()}` : null
 
   const { data, error, isLoading, mutate } = useSWR<SlotsResponse>(url, fetcher, {
-    refreshInterval: 20_000,
+    refreshInterval: 8_000,
     revalidateOnFocus: true,
-    dedupingInterval: 5_000,
+    revalidateOnReconnect: true,
+    dedupingInterval: 2_000,
   })
 
   return {

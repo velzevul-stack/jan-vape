@@ -116,6 +116,19 @@ export default function CheckoutPage() {
         }),
       )
 
+      await Promise.all([
+        mutate(
+          (key: string) => typeof key === 'string' && key.startsWith('/api/slots'),
+          undefined,
+          { revalidate: true },
+        ),
+        mutate(
+          (key: string) => typeof key === 'string' && key.startsWith('/api/catalog'),
+          undefined,
+          { revalidate: true },
+        ),
+      ])
+
       clearCart()
       resetBooking()
 
@@ -150,13 +163,14 @@ export default function CheckoutPage() {
         <Header />
         <main className="flex flex-1 items-center justify-center px-4 py-8">
           <div className="text-center">
-            <h2 className="font-display text-2xl font-bold text-text-on-dark">КОРЗИНА ПУСТА</h2>
+            <h2 className="font-display text-3xl font-extrabold tracking-wider text-text-on-dark">КОРЗИНА ПУСТА</h2>
             <p className="mt-2 text-text-muted">Добавьте товары для оформления</p>
             <Link
               href="/"
-              className="mt-4 inline-flex h-12 items-center gap-2 rounded-full bg-accent-primary px-6 font-display text-sm font-bold uppercase tracking-wider text-text-on-accent"
+              className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-accent-primary px-6 font-display text-sm font-extrabold uppercase tracking-wider text-text-on-accent shadow-lg shadow-accent-primary/30"
             >
               В каталог
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </main>
@@ -169,50 +183,50 @@ export default function CheckoutPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 px-4 py-6 md:px-6 md:py-8">
+      <main className="flex-1 px-4 py-6 md:px-6 md:py-10">
         <PageContainer maxWidth="checkout">
           <Link
             href="/cart"
-            className="mb-6 inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-on-dark"
+            className="mb-6 inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-accent-soft"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Назад в корзину</span>
           </Link>
 
-          <h1 className="mb-8 font-display text-3xl font-bold tracking-wider text-text-on-dark md:text-4xl">
+          <h1 className="mb-8 font-display text-4xl font-black tracking-wider text-text-on-dark md:text-5xl">
             ОФОРМЛЕНИЕ
           </h1>
 
           <div className="flex flex-col gap-8 lg:grid lg:grid-cols-5">
             <div className="order-1 space-y-8 lg:order-none lg:col-span-3">
               <div>
-                <h3 className="mb-4 font-display text-sm font-bold tracking-wider text-text-muted">
+                <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                   ВАШ ЗАКАЗ
                 </h3>
-                <div className="rounded-3xl bg-card p-4">
+                <div className="rounded-3xl border border-border-on-dark bg-elevated p-5">
                   <div className="space-y-3">
                     {items.map((item) => (
                       <div key={item.product.id} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card-inner">
-                            <span className="text-xs font-bold text-text-on-dark">
+                            <span className="text-xs font-bold tabular-nums text-text-on-dark">
                               {item.product.brand.slice(0, 2).toUpperCase()}
                             </span>
                           </div>
                           <div>
-                            <span className="text-text-on-card">{item.product.brand}</span>
-                            <span className="text-text-muted"> x{item.quantity}</span>
+                            <span className="text-text-on-dark">{item.product.brand}</span>
+                            <span className="text-text-muted"> × {item.quantity}</span>
                           </div>
                         </div>
-                        <span className="font-medium tabular-nums text-text-on-card">
+                        <span className="font-medium tabular-nums text-text-on-dark">
                           {formatPrice(item.product.retailPrice * item.quantity)}
                         </span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border-subtle pt-4">
+                  <div className="mt-4 flex items-center justify-between border-t border-border-on-dark pt-4">
                     <span className="text-text-muted">Итого ({totalItems} шт.)</span>
-                    <span className="text-lg font-bold tabular-nums text-text-on-card">
+                    <span className="font-display text-xl font-extrabold tabular-nums text-accent-soft">
                       {formatPrice(totalPrice)}
                     </span>
                   </div>
@@ -220,23 +234,23 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <h3 className="mb-4 font-display text-sm font-bold tracking-wider text-text-muted">
+                <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                   ТОЧКА ВЫДАЧИ
                 </h3>
                 {isPickupSelected && !isChangingLocation ? (
-                  <div className="flex items-center gap-4 rounded-3xl bg-card p-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-primary">
+                  <div className="flex items-center gap-4 rounded-3xl border border-accent-primary/30 bg-elevated p-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-primary shadow-lg shadow-accent-primary/30">
                       <MapPin className="h-5 w-5 text-text-on-accent" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-text-on-card">
+                      <div className="font-medium text-text-on-dark">
                         {locationLabel ?? 'Точка выбрана'}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsChangingLocation(true)}
-                      className="shrink-0 text-sm font-medium text-accent-primary hover:underline"
+                      className="shrink-0 rounded-full bg-card-inner px-3 py-1.5 text-sm font-medium text-accent-soft hover:bg-accent-mist"
                     >
                       Изменить
                     </button>
@@ -254,8 +268,8 @@ export default function CheckoutPage() {
             </div>
 
             <div className="order-2 lg:order-none lg:col-span-2">
-              <div className="rounded-3xl bg-card p-6 lg:sticky lg:top-[4.5rem]">
-                <h3 className="mb-4 font-display text-lg font-bold tracking-wider text-text-on-card">
+              <div className="surface-card rounded-3xl p-6 lg:sticky lg:top-[6rem]">
+                <h3 className="mb-4 font-display text-lg font-extrabold tracking-wider text-text-on-dark">
                   СВОДКА
                 </h3>
 
@@ -288,14 +302,14 @@ export default function CheckoutPage() {
                 </div>
 
                 {submitError && (
-                  <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  <div className="mb-4 rounded-2xl border border-status-danger/30 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">
                     {submitError}
                   </div>
                 )}
 
-                <div className="mb-6 flex items-center justify-between border-t border-border-subtle pt-4">
-                  <span className="font-display font-bold text-text-on-card">ИТОГО</span>
-                  <span className="text-2xl font-bold tabular-nums text-text-on-card">
+                <div className="mb-6 flex items-center justify-between border-t border-border-on-dark pt-4">
+                  <span className="font-display font-bold tracking-wider text-text-muted">ИТОГО</span>
+                  <span className="font-display text-3xl font-extrabold tabular-nums text-text-on-dark">
                     {formatPrice(totalPrice)}
                   </span>
                 </div>
@@ -305,17 +319,17 @@ export default function CheckoutPage() {
                   disabled={!canSubmit || isSubmitting}
                   className={cn(
                     'flex h-14 w-full items-center justify-center gap-2 rounded-full',
-                    'font-display text-base font-bold uppercase tracking-wider',
+                    'font-display text-base font-extrabold uppercase tracking-wider',
                     'transition-all duration-200',
                     canSubmit && !isSubmitting
-                      ? 'bg-accent-primary text-text-on-accent hover:bg-accent-hover active:scale-[0.98]'
-                      : 'cursor-not-allowed bg-status-disabled text-text-muted',
+                      ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
+                      : 'cursor-not-allowed bg-card-inner text-text-faint',
                   )}
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-text-muted border-t-transparent" />
-                      <span>Оформляем...</span>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-text-on-accent border-t-transparent" />
+                      <span>Оформляем…</span>
                     </>
                   ) : (
                     <>
@@ -325,7 +339,7 @@ export default function CheckoutPage() {
                   )}
                 </button>
 
-                <p className="mt-4 text-center text-xs text-text-muted">
+                <p className="mt-4 text-center text-xs text-text-faint">
                   Оплата при получении в магазине
                 </p>
               </div>
@@ -352,17 +366,28 @@ function ChecklistItem({
     <div className="flex items-center gap-3">
       <div
         className={cn(
-          'flex h-6 w-6 items-center justify-center rounded-full transition-colors',
-          checked ? 'bg-status-success' : 'bg-card-inner',
+          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors',
+          checked
+            ? 'bg-status-success text-text-on-accent shadow-md shadow-status-success/40'
+            : 'bg-card-inner text-text-faint',
         )}
       >
-        {checked && <Check className="h-4 w-4 text-text-on-accent" />}
+        {checked && <Check className="h-3.5 w-3.5" />}
       </div>
-      <div className="flex-1">
-        <span className={cn('text-sm', checked ? 'text-text-on-card' : 'text-text-muted')}>
+      <div className="min-w-0 flex-1">
+        <span
+          className={cn(
+            'text-sm',
+            checked ? 'text-text-on-dark' : 'text-text-muted',
+          )}
+        >
           {label}
         </span>
-        {value && <span className="ml-2 text-sm font-medium text-accent-primary">{value}</span>}
+        {value && (
+          <span className="ml-2 truncate text-sm font-medium text-accent-soft">
+            {value}
+          </span>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/lib/mock-data'
 import { useCart } from '@/lib/context/cart-context'
@@ -32,80 +32,84 @@ export default function CartPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 px-4 py-6 md:px-6 md:py-8">
+      <main className="flex-1 px-4 py-6 md:px-6 md:py-10">
         <PageContainer maxWidth="cart">
-          {/* Back Link */}
           <Link
             href="/"
-            className="mb-6 inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-on-dark"
+            className="mb-6 inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-accent-soft"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Назад в каталог</span>
           </Link>
 
-          {/* Title */}
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="font-display text-3xl font-bold tracking-wider text-text-on-dark md:text-4xl">
-              КОРЗИНА
-            </h1>
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <h1 className="font-display text-4xl font-black tracking-wider text-text-on-dark md:text-5xl">
+                КОРЗИНА
+              </h1>
+              <p className="mt-2 text-sm text-text-muted">
+                {totalItems} {itemsWord(totalItems)} на сумму{' '}
+                <span className="font-bold text-text-on-dark tabular-nums">{formatPrice(totalPrice)}</span>
+              </p>
+            </div>
             <button
               onClick={clearCart}
-              className="text-sm text-text-muted hover:text-status-warning"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-on-dark bg-elevated px-3 py-2 text-xs text-text-muted transition-colors hover:border-status-danger/40 hover:text-status-danger"
             >
+              <Trash2 className="h-3.5 w-3.5" />
               Очистить
             </button>
           </div>
 
-          {/* Cart Items */}
-          <div className="mb-8 space-y-4">
-            {items.map((item) => (
-              <CartItem key={item.product.id} item={item} />
-            ))}
-          </div>
-
-          {/* Summary */}
-          <div className="rounded-3xl bg-card p-6">
-            <div className="mb-4 flex items-center justify-between text-text-on-card">
-              <span className="text-text-muted">Товаров</span>
-              <span className="font-medium">{totalItems} шт.</span>
-            </div>
-            <div className="mb-6 flex items-center justify-between border-t border-border-subtle pt-4">
-              <span className="font-display text-lg font-bold tracking-wider text-text-on-card">
-                ИТОГО
-              </span>
-              <span className="text-2xl font-bold tabular-nums text-text-on-card">
-                {formatPrice(totalPrice)}
-              </span>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="stagger-fade space-y-3">
+              {items.map((item) => (
+                <CartItem key={item.product.id} item={item} />
+              ))}
             </div>
 
-            {/* Pickup location */}
-            <div className="mb-6">
-              <h3 className="mb-3 font-display text-sm font-bold tracking-wider text-text-muted">
-                ТОЧКА ВЫДАЧИ
-              </h3>
-              <PickupLocationSelector />
-            </div>
+            <aside className="lg:sticky lg:top-[6rem] lg:self-start">
+              <div className="surface-card rounded-3xl p-6">
+                <div className="mb-4 flex items-center justify-between border-b border-border-on-dark pb-4">
+                  <span className="text-sm text-text-muted">Товаров</span>
+                  <span className="font-medium tabular-nums text-text-on-dark">{totalItems} шт.</span>
+                </div>
+                <div className="mb-6 flex items-center justify-between">
+                  <span className="font-display text-base font-bold tracking-wider text-text-muted">
+                    ИТОГО
+                  </span>
+                  <span className="font-display text-3xl font-extrabold tabular-nums text-text-on-dark">
+                    {formatPrice(totalPrice)}
+                  </span>
+                </div>
 
-            {/* CTA */}
-            <Link
-              href={isPickupSelected ? '/checkout' : '#'}
-              onClick={(e) => !isPickupSelected && e.preventDefault()}
-              className={cn(
-                'flex h-14 w-full items-center justify-center gap-2 rounded-full',
-                'font-display text-base font-bold uppercase tracking-wider',
-                'transition-all duration-200',
-                isPickupSelected
-                  ? 'bg-accent-primary text-text-on-accent hover:bg-accent-hover active:scale-[0.98]'
-                  : 'cursor-not-allowed bg-status-disabled text-text-muted'
-              )}
-            >
-              <span>Выбрать дату и время</span>
-              <ArrowRight className="h-5 w-5" />
-            </Link>
+                <div className="mb-6">
+                  <h3 className="mb-3 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
+                    ТОЧКА ВЫДАЧИ
+                  </h3>
+                  <PickupLocationSelector />
+                </div>
 
-            <p className="mt-4 text-center text-xs text-text-muted">
-              Оплата при получении. Бронь действительна 24 часа.
-            </p>
+                <Link
+                  href={isPickupSelected ? '/checkout' : '#'}
+                  onClick={(e) => !isPickupSelected && e.preventDefault()}
+                  className={cn(
+                    'flex h-14 w-full items-center justify-center gap-2 rounded-full',
+                    'font-display text-base font-extrabold uppercase tracking-wider transition-all duration-200',
+                    isPickupSelected
+                      ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
+                      : 'cursor-not-allowed bg-card-inner text-text-faint',
+                  )}
+                >
+                  <span>Выбрать дату и время</span>
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+
+                <p className="mt-4 text-center text-xs text-text-faint">
+                  Оплата при получении. Бронь действительна 24 часа.
+                </p>
+              </div>
+            </aside>
           </div>
         </PageContainer>
       </main>
@@ -113,4 +117,12 @@ export default function CartPage() {
       <Footer />
     </div>
   )
+}
+
+function itemsWord(n: number): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'товар'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'товара'
+  return 'товаров'
 }

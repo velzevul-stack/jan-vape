@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
@@ -39,5 +40,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     reason: parsed.data.reason ?? null,
   })
   await repo.save(slot)
+  revalidatePath('/admin/blocked-slots')
   return NextResponse.json(slot, { status: 201 })
 }

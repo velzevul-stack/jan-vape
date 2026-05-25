@@ -13,6 +13,7 @@ interface CatalogParams {
 
 interface CatalogResponse {
   products: Product[]
+  strengthValues?: string[]
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -30,11 +31,13 @@ export function useCatalog(params: CatalogParams = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<CatalogResponse>(url, fetcher, {
     revalidateOnFocus: true,
-    dedupingInterval: 30_000,
+    refreshInterval: 15_000,
+    dedupingInterval: 4_000,
   })
 
   return {
     products: data?.products ?? [],
+    strengthValues: data?.strengthValues ?? [],
     isLoading,
     error,
     refresh: mutate,

@@ -1,13 +1,16 @@
+export type ProductCategory = 'liquid' | 'snus' | 'disposable' | 'vape' | 'consumable'
+
 export interface Product {
   id: string
   externalId?: number
   brand: string
   flavor: string
-  category: 'liquid' | 'snus' | 'disposable'
-  strength: number
+  category: ProductCategory
+  strength: number | string
   tasteProfile: string
   retailPrice: number
   availableOnPost: number
+  specification?: string
   image?: string
 }
 
@@ -83,10 +86,39 @@ export function formatDateISO(date: Date): string {
   return date.toISOString().split('T')[0]
 }
 
-export const categoryLabels: Record<Product['category'], string> = {
+export const categoryLabels: Record<ProductCategory, string> = {
   liquid: 'Жидкости',
-  snus: 'Снюс',
   disposable: 'Одноразки',
+  vape: 'Устройства',
+  snus: 'Снюс',
+  consumable: 'Расходники',
+}
+
+export const categoryOrder: ProductCategory[] = [
+  'liquid',
+  'disposable',
+  'vape',
+  'snus',
+  'consumable',
+]
+
+export const strengthSupportedCategories = new Set<ProductCategory>([
+  'liquid',
+  'disposable',
+  'snus',
+])
+
+export function categorySupportsStrength(category: ProductCategory): boolean {
+  return strengthSupportedCategories.has(category)
+}
+
+export function parseStrengthMg(value: number | string | null | undefined): number | null {
+  if (value == null) return null
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const match = String(value).match(/(\d+(?:[.,]\d+)?)/)
+  if (!match) return null
+  const n = parseFloat(match[1].replace(',', '.'))
+  return Number.isFinite(n) ? n : null
 }
 
 export function productAvailableStock(product: Product): number {

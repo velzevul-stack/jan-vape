@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
@@ -74,6 +75,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       .set({ isHidden: true })
       .where('externalId NOT IN (:...ids)', { ids: incomingIds })
       .execute()
+
+    revalidatePath('/')
 
     return NextResponse.json({ upserted: incomingIds.length })
   })

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
@@ -18,11 +19,12 @@ const PatchSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const { id } = await params
   const repo = await getRepo(PickupLocation)
-  const loc = await repo.findOne({ where: { id: params.id } })
+  const loc = await repo.findOne({ where: { id } })
   if (!loc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const body = await req.json()
   const parsed = PatchSchema.safeParse(body)
@@ -30,15 +32,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
   }
   await repo.update(loc.id, parsed.data)
+  revalidatePath('/admin/locations')
+  revalidatePath('/')
   return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const { id } = await params
   const repo = await getRepo(PickupLocation)
-  await repo.update(params.id, { isActive: false })
+  await repo.update(id, { isActive: false })
+  revalidatePath('/admin/locations')
+  revalidatePath('/')
   return NextResponse.json({ ok: true })
 }

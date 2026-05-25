@@ -3,6 +3,7 @@ import { WebBooking } from '@/src/entities/WebBooking'
 import { SyncCursor } from '@/src/entities/SyncCursor'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function AdminDashboard() {
   const [bookingRepo, cursorRepo] = await Promise.all([
@@ -10,55 +11,103 @@ export default async function AdminDashboard() {
     getRepo(SyncCursor),
   ])
 
-  const [pendingCount, confirmedCount, cursors] = await Promise.all([
+  const [pendingCount, confirmedCount, cancelledCount, completedCount, cursors] = await Promise.all([
     bookingRepo.count({ where: { status: 'pending' } }),
     bookingRepo.count({ where: { status: 'confirmed' } }),
+    bookingRepo.count({ where: { status: 'cancelled' } }),
+    bookingRepo.count({ where: { status: 'completed' } }),
     cursorRepo.find({ order: { lastHeartbeatAt: 'DESC' }, take: 10 }),
   ])
 
+  const now = Date.now()
+
   return (
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Сводка</h1>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 32 }}>
-        <StatCard label="Ожидающие брони" value={pendingCount} color="#F5B854" />
-        <StatCard label="Подтверждённые" value={confirmedCount} color="#4ADE80" />
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Сводка</h1>
+          <p className="admin-page-subtitle">
+            Состояние броней и активность приложений-кассиров в режиме реального времени.
+          </p>
+        </div>
       </div>
-      <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Приложения (heartbeat)</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ textAlign: 'left', borderBottom: '1px solid #333' }}>
-            <th style={{ padding: '8px 12px' }}>Client ID</th>
-            <th style={{ padding: '8px 12px' }}>Версия</th>
-            <th style={{ padding: '8px 12px' }}>Последний heartbeat</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cursors.map((c) => (
-            <tr key={c.id} style={{ borderBottom: '1px solid #222' }}>
-              <td style={{ padding: '8px 12px', color: '#aaa' }}>{c.clientId.slice(0, 20)}…</td>
-              <td style={{ padding: '8px 12px' }}>{c.appVersion ?? '—'}</td>
-              <td style={{ padding: '8px 12px' }}>{c.lastHeartbeatAt.toLocaleString('ru-RU')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      <div className="admin-stat-grid">
+        <div className="admin-stat" data-tone="warn">
+          <div className="admin-stat-value">{pendingCount}</div>
+          <div className="admin-stat-label">Ожидают подтверждения</div>
+        </div>
+        <div className="admin-stat" data-tone="success">
+          <div className="admin-stat-value">{confirmedCount}</div>
+          <div className="admin-stat-label">Подтверждённые</div>
+        </div>
+        <div className="admin-stat" data-tone="muted">
+          <div className="admin-stat-value">{completedCount}</div>
+          <div className="admin-stat-label">Закрыто</div>
+        </div>
+        <div className="admin-stat" data-tone="danger">
+          <div className="admin-stat-value">{cancelledCount}</div>
+          <div className="admin-stat-label">Отменено</div>
+        </div>
+      </div>
+
+      <div className="admin-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Подключённые приложения</h2>
+          <span className="admin-faint" style={{ fontSize: 12 }}>
+            heartbeat · последние {cursors.length}
+          </span>
+        </div>
+
+        {cursors.length === 0 ? (
+          <div className="admin-empty">
+            Пока ни одно приложение не отправляло heartbeat. Откройте Vapestore и проверьте экран «Синхронизация».
+          </div>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Client ID</th>
+                  <th>Версия</th>
+                  <th>Heartbeat</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cursors.map((c) => {
+                  const ageMin = Math.round((now - c.lastHeartbeatAt.getTime()) / 60_000)
+                  const online = ageMin < 5
+                  return (
+                    <tr key={c.id}>
+                      <td className="admin-mono" title={c.clientId}>{c.clientId.slice(0, 24)}…</td>
+                      <td>{c.appVersion ?? <span className="admin-faint">—</span>}</td>
+                      <td>
+                        <span className="admin-muted">
+                          {c.lastHeartbeatAt.toLocaleString('ru-RU', { timeZone: 'Europe/Minsk' })}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="admin-badge" data-tone={online ? 'confirmed' : 'off'}>
+                          {online ? `online · ${ageMin} мин назад` : `offline · ${formatAge(ageMin)}`}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div
-      style={{
-        background: '#1c1c1e',
-        borderRadius: 12,
-        padding: '20px 24px',
-        minWidth: 160,
-        borderLeft: `4px solid ${color}`,
-      }}
-    >
-      <div style={{ fontSize: 32, fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>{label}</div>
-    </div>
-  )
+function formatAge(min: number): string {
+  if (min < 60) return `${min} мин`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h} ч`
+  const d = Math.floor(h / 24)
+  return `${d} д`
 }

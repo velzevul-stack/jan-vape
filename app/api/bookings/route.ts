@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getRepo } from '@/src/lib/db'
 import { WebBooking } from '@/src/entities/WebBooking'
 import { PickupLocation } from '@/src/entities/PickupLocation'
 import { CustomAddress } from '@/src/entities/CustomAddress'
@@ -125,6 +125,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
 
     await txn.save(booking)
+
+    revalidatePath('/admin')
+    revalidatePath('/admin/bookings')
 
     return NextResponse.json(
       {

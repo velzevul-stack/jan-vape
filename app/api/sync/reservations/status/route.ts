@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
@@ -42,6 +43,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       await repo.update(booking.id, updateData)
       updated++
+    }
+
+    if (updated > 0) {
+      revalidatePath('/admin')
+      revalidatePath('/admin/bookings')
     }
 
     return NextResponse.json({ updated })

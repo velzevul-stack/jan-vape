@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
@@ -34,5 +35,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const repo = await getRepo(PickupLocation)
   const loc = repo.create(parsed.data)
   await repo.save(loc)
+  revalidatePath('/admin/locations')
+  revalidatePath('/')
   return NextResponse.json(loc, { status: 201 })
 }

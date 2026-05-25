@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
@@ -10,11 +11,12 @@ const PatchSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const { id } = await params
   const repo = await getRepo(CustomAddress)
-  const addr = await repo.findOne({ where: { id: params.id } })
+  const addr = await repo.findOne({ where: { id } })
   if (!addr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const body = await req.json()
   const parsed = PatchSchema.safeParse(body)
@@ -25,5 +27,7 @@ export async function PATCH(
     isPromoted: parsed.data.isPromoted,
     promotedAt: parsed.data.isPromoted ? new Date() : null,
   })
+  revalidatePath('/admin/addresses')
+  revalidatePath('/')
   return NextResponse.json({ ok: true })
 }

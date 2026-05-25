@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
@@ -34,6 +35,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     for (const item of parsed.data.updates) {
       const result = await repo.update({ externalId: item.externalId }, { postStock: item.postStock })
       if (result.affected) updated += result.affected
+    }
+
+    if (updated > 0) {
+      revalidatePath('/')
     }
 
     return NextResponse.json({ updated })
