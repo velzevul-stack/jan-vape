@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { WebBooking } from '@/src/entities/WebBooking'
-import { PickupLocation } from '@/src/entities/PickupLocation'
-import { CustomAddress } from '@/src/entities/CustomAddress'
 import { normalizeAddress } from '@/src/lib/normalize'
-import { getDataSource } from '@/src/lib/db'
+import { entityTableNames, getDataSource } from '@/src/lib/db'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
@@ -54,12 +51,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ds = await getDataSource()
 
   return ds.transaction(async (txn) => {
+    const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
+    const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
+    const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
+
     let locationId: string | null = null
     let customAddressId: string | null = null
     let maxBookings = 1
 
     if (data.pickupLocationId) {
-      const loc = await txn.findOne(PickupLocation, { where: { id: data.pickupLocationId } })
+      const loc = await locationRepo.findOne({ where: { id: data.pickupLocationId } })
       if (!loc || !loc.isActive) {
         return NextResponse.json({ error: 'Location not found' }, { status: 404 })
       }
@@ -67,15 +68,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       maxBookings = loc.maxBookingsPerSlot
     } else if (data.customAddressText) {
       const key = normalizeAddress(data.customAddressText)
-      let addr = await txn.findOne(CustomAddress, { where: { normalizedKey: key } })
+      let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
       if (!addr) {
-        addr = txn.create(CustomAddress, {
+        addr = addressRepo.create({
           normalizedKey: key,
           label: data.customAddressText.trim(),
           salesCount: 0,
           isPromoted: false,
         })
-        await txn.save(addr)
+        await addressRepo.save(addr)
       }
       customAddressId = addr.id
     }
@@ -83,8 +84,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const slotStart = new Date(scheduledAt)
     const slotEnd = new Date(scheduledAt.getTime() + 5 * 60 * 1000)
 
-    const existingCount = await txn
-      .createQueryBuilder(WebBooking, 'wb')
+    const existingCount = await bookingRepo
+      .createQueryBuilder('wb')
       .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
       .andWhere('wb.scheduledAt >= :start AND wb.scheduledAt < :end', {
         start: slotStart.toISOString(),
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       0,
     )
 
-    const booking = txn.create(WebBooking, {
+    const booking = bookingRepo.create({
       publicNumber: generatePublicNumber(),
       source: 'web',
       customerName: data.customerName,
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       status: 'pending',
     })
 
-    await txn.save(booking)
+    await bookingRepo.save(booking)
 
     revalidatePath('/admin')
     revalidatePath('/admin/bookings')

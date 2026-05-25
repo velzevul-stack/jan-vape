@@ -7,6 +7,9 @@ const nextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ['typeorm', 'pg', 'pg-native', 'reflect-metadata'],
+  experimental: {
+    serverMinification: false,
+  },
 }
 
 export default nextConfig

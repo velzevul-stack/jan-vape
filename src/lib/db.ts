@@ -20,6 +20,17 @@ export const entityRegistry = {
   IdempotencyKey,
 } as const
 
+export const entityTableNames = {
+  ProductSnapshot: 'product_snapshots',
+  PickupLocation: 'pickup_locations',
+  CustomAddress: 'custom_addresses',
+  WebBooking: 'web_bookings',
+  WebSale: 'web_sales',
+  BlockedSlot: 'blocked_slots',
+  SyncCursor: 'sync_cursors',
+  IdempotencyKey: 'idempotency_keys',
+} as const
+
 export type EntityKey = keyof typeof entityRegistry
 
 export type EntityInstance<K extends EntityKey> = InstanceType<(typeof entityRegistry)[K]>
@@ -60,7 +71,7 @@ export async function getRepo<K extends EntityKey>(
   key: K,
 ): Promise<Repository<EntityInstance<K>>> {
   const ds = await getDataSource()
-  return ds.getRepository(entityRegistry[key]) as Repository<EntityInstance<K>>
+  return ds.getRepository(entityTableNames[key]) as Repository<EntityInstance<K>>
 }
 
 export async function getEntityManager() {
