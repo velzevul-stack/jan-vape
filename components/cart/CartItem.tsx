@@ -2,7 +2,12 @@
 
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { type CartItem as CartItemType, formatPrice, categoryLabels } from '@/lib/mock-data'
+import {
+  type CartItem as CartItemType,
+  formatPrice,
+  categoryLabels,
+  productAvailableStock,
+} from '@/lib/mock-data'
 import { useCart } from '@/lib/context/cart-context'
 import { Stepper } from '@/components/ui-custom/Stepper'
 
@@ -13,7 +18,7 @@ interface CartItemProps {
 export function CartItem({ item }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart()
   const { product, quantity } = item
-  const availableStock = product.postStock - product.reservedQty
+  const availableStock = productAvailableStock(product)
   const itemTotal = product.retailPrice * quantity
 
   return (

@@ -88,3 +88,11 @@ export const categoryLabels: Record<Product['category'], string> = {
   snus: 'Снюс',
   disposable: 'Одноразки',
 }
+
+export function productAvailableStock(product: Product): number {
+  return product.availableOnPost ?? 0
+}
+
+export function hasTasteProfile(profile: string, taste: 'sweet' | 'sour' | 'cold'): boolean {
+  return (profile ?? '').includes(taste)
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import type { Product, CartItem } from '@/lib/mock-data'
+import { type Product, type CartItem, productAvailableStock } from '@/lib/mock-data'
 
 interface CartContextType {
   items: CartItem[]
@@ -48,7 +48,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         return prev.map(item =>
           item.product.id === product.id
-            ? { ...item, quantity: Math.min(item.quantity + quantity, product.postStock - product.reservedQty) }
+            ? { ...item, quantity: Math.min(item.quantity + quantity, productAvailableStock(product)) }
             : item
         )
       }
@@ -68,7 +68,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(prev =>
       prev.map(item =>
         item.product.id === productId
-          ? { ...item, quantity: Math.min(quantity, item.product.postStock - item.product.reservedQty) }
+          ? { ...item, quantity: Math.min(quantity, productAvailableStock(item.product)) }
           : item
       )
     )

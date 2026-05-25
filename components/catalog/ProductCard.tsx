@@ -1,7 +1,13 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { type Product, formatPrice, categoryLabels } from '@/lib/mock-data'
+import {
+  type Product,
+  formatPrice,
+  categoryLabels,
+  productAvailableStock,
+  hasTasteProfile,
+} from '@/lib/mock-data'
 import { useCart } from '@/lib/context/cart-context'
 import { CompactStepper } from '@/components/ui-custom/Stepper'
 import { Snowflake, Candy, Citrus } from 'lucide-react'
@@ -13,7 +19,8 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem, removeItem, getItemQuantity, updateQuantity } = useCart()
   const quantity = getItemQuantity(product.id)
-  const availableStock = product.postStock - product.reservedQty
+  const availableStock = productAvailableStock(product)
+  const tasteProfile = product.tasteProfile ?? ''
 
   const handleAdd = () => {
     if (quantity < availableStock) {
@@ -51,13 +58,13 @@ export function ProductCard({ product }: ProductCardProps) {
 
       {/* Taste Profile */}
       <div className="mb-4 flex flex-wrap gap-1.5">
-        {product.tasteProfile.sweet && (
+        {hasTasteProfile(tasteProfile, 'sweet') && (
           <TasteTag icon={<Candy className="h-3 w-3" />} label="Сладкий" />
         )}
-        {product.tasteProfile.sour && (
+        {hasTasteProfile(tasteProfile, 'sour') && (
           <TasteTag icon={<Citrus className="h-3 w-3" />} label="Кислый" />
         )}
-        {product.tasteProfile.cold && (
+        {hasTasteProfile(tasteProfile, 'cold') && (
           <TasteTag icon={<Snowflake className="h-3 w-3" />} label="Холодный" />
         )}
       </div>
