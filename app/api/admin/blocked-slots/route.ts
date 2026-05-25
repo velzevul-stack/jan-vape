@@ -40,5 +40,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   })
   await repo.save(slot)
   revalidatePath('/admin/blocked-slots')
+  revalidatePath('/')
   return NextResponse.json(slot, { status: 201 })
 }
