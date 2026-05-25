@@ -15,6 +15,7 @@ import { DatePickerStrip } from '@/components/checkout/DatePickerStrip'
 import { TimeSlotGrid } from '@/components/checkout/TimeSlotGrid'
 import { ContactForm } from '@/components/checkout/ContactForm'
 import { PickupLocationSelector } from '@/components/checkout/PickupLocationSelector'
+import { CartProductLines } from '@/components/cart/CartProductLines'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { isValidTelegramUsername, normalizeTelegramUsername } from '@/lib/telegram'
 import { mutate } from 'swr'
@@ -214,9 +215,13 @@ export default function CheckoutPage() {
                               {item.product.brand.slice(0, 2).toUpperCase()}
                             </span>
                           </div>
-                          <div>
-                            <span className="text-text-on-dark">{item.product.brand}</span>
-                            <span className="text-text-muted"> × {item.quantity}</span>
+                          <div className="min-w-0 flex-1">
+                            <CartProductLines
+                              product={item.product}
+                              quantity={item.quantity}
+                              brandClassName="text-sm"
+                              flavorClassName="text-xs"
+                            />
                           </div>
                         </div>
                         <span className="font-medium tabular-nums text-text-on-dark">

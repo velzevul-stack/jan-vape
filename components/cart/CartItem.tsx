@@ -39,7 +39,9 @@ export function CartItem({ item }: CartItemProps) {
             <h3 className="mt-1 truncate font-display text-base font-extrabold text-text-on-dark">
               {product.brand}
             </h3>
-            <p className="truncate text-xs text-text-muted">{product.flavor}</p>
+            {product.flavor?.trim() && (
+              <p className="mt-0.5 line-clamp-2 text-sm text-text-muted">{product.flavor.trim()}</p>
+            )}
           </div>
           <button
             onClick={() => removeItem(product.id)}

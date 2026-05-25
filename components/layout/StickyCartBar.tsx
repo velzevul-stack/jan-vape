@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { useCart } from '@/lib/context/cart-context'
 import { formatPrice } from '@/lib/mock-data'
 import { Stepper } from '@/components/ui-custom/Stepper'
+import { CartProductLines } from '@/components/cart/CartProductLines'
 
 export function StickyCartBar() {
   const { items, totalItems, totalPrice, updateQuantity, removeItem, clearCart } = useCart()
@@ -100,12 +101,11 @@ export function StickyCartBar() {
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-text-on-dark">
-                      {item.product.brand}
-                    </div>
-                    <div className="truncate text-xs text-text-muted">
-                      {item.product.flavor}
-                    </div>
+                    <CartProductLines
+                      product={item.product}
+                      brandClassName="text-sm font-semibold"
+                      flavorClassName="text-xs"
+                    />
                     <div className="mt-1 font-display text-sm font-bold tabular-nums text-accent-soft">
                       {formatPrice(item.product.retailPrice * item.quantity)}
                     </div>
@@ -187,11 +187,13 @@ export function CartSidebar() {
           {items.slice(0, 4).map((item) => (
             <div
               key={item.product.id}
-              className="flex items-center justify-between text-sm"
+              className="flex items-start justify-between gap-2 text-sm"
             >
-              <span className="truncate text-text-on-dark">
-                {item.product.brand}
-              </span>
+              <CartProductLines
+                product={item.product}
+                brandClassName="text-sm font-medium"
+                flavorClassName="text-[11px]"
+              />
               <span className="ml-2 shrink-0 text-text-muted tabular-nums">
                 ×{item.quantity}
               </span>
