@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, MapPin, Check } from 'lucide-react'
@@ -20,11 +20,28 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { isValidTelegramUsername, normalizeTelegramUsername } from '@/lib/telegram'
 import { mutate } from 'swr'
 import { usePickupLocations } from '@/lib/api/hooks/usePickupLocations'
+import { useCatalog } from '@/lib/api/hooks/useCatalog'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, totalItems, totalPrice, clearCart } = useCart()
+  const { products } = useCatalog()
   const { locations } = usePickupLocations()
+  const orderItems = useMemo(
+    () =>
+      items.map((item) => {
+        const fresh = products.find((p) => p.id === item.product.id)
+        if (!fresh) return item
+        return {
+          ...item,
+          product: {
+            ...item.product,
+            ...fresh,
+          },
+        }
+      }),
+    [items, products],
+  )
   const {
     pickupLocationId,
     customAddressText,
@@ -207,24 +224,22 @@ export default function CheckoutPage() {
                 </h3>
                 <div className="rounded-3xl border border-border-on-dark bg-elevated p-5">
                   <div className="space-y-3">
-                    {items.map((item) => (
-                      <div key={item.product.id} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card-inner">
+                    {orderItems.map((item) => (
+                      <div key={item.product.id} className="flex items-start justify-between gap-3 text-sm">
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-card-inner">
                             <span className="text-xs font-bold tabular-nums text-text-on-dark">
                               {item.product.brand.slice(0, 2).toUpperCase()}
                             </span>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <CartProductLines
-                              product={item.product}
-                              quantity={item.quantity}
-                              brandClassName="text-sm"
-                              flavorClassName="text-xs"
-                            />
-                          </div>
+                          <CartProductLines
+                            product={item.product}
+                            quantity={item.quantity}
+                            brandClassName="text-sm font-semibold"
+                            flavorClassName="text-sm text-text-muted"
+                          />
                         </div>
-                        <span className="font-medium tabular-nums text-text-on-dark">
+                        <span className="shrink-0 pt-1 font-medium tabular-nums text-text-on-dark">
                           {formatPrice(item.product.retailPrice * item.quantity)}
                         </span>
                       </div>
@@ -278,6 +293,22 @@ export default function CheckoutPage() {
                 <h3 className="mb-4 font-display text-lg font-extrabold tracking-wider text-text-on-dark">
                   СВОДКА
                 </h3>
+
+                <div className="mb-5 space-y-2.5 border-b border-border-on-dark pb-5">
+                  {orderItems.map((item) => (
+                    <div key={item.product.id} className="flex items-start justify-between gap-3">
+                      <CartProductLines
+                        product={item.product}
+                        quantity={item.quantity}
+                        brandClassName="text-sm font-medium"
+                        flavorClassName="text-xs text-accent-soft/90"
+                      />
+                      <span className="shrink-0 pt-0.5 text-sm font-medium tabular-nums text-text-on-dark">
+                        {formatPrice(item.product.retailPrice * item.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
 
                 <div className="mb-6 space-y-3">
                   <ChecklistItem

@@ -44,7 +44,7 @@ export function CartProductLines({
         )}
       </div>
       {flavor && (
-        <div className={cn('truncate text-xs text-text-muted', flavorClassName)}>
+        <div className={cn('line-clamp-2 text-text-muted', flavorClassName ?? 'text-xs')}>
           {flavor}
         </div>
       )}
