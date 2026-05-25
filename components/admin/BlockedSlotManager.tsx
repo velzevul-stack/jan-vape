@@ -57,7 +57,7 @@ export function BlockedSlotManager({ slots, locations }: Props) {
   }
 
   async function removeSlot(id: string) {
-    if (!confirm('Удалить блокировку?')) return
+    if (!confirm('Разблокировать этот интервал времени?')) return
     setBusyId(id)
     setError(null)
     const result = await adminFetch(`/api/admin/blocked-slots/${id}`, { method: 'DELETE' })
@@ -66,7 +66,7 @@ export function BlockedSlotManager({ slots, locations }: Props) {
       setError(result.error)
       return
     }
-    setMessage('Блокировка удалена')
+    setMessage('Интервал разблокирован')
     router.refresh()
   }
 
@@ -159,9 +159,9 @@ export function BlockedSlotManager({ slots, locations }: Props) {
         </div>
       ) : (
         <>
-          <SlotSection title={`Актуальные (${upcoming.length})`} rows={upcoming} busyId={busyId} onDelete={removeSlot} canDelete />
+          <SlotSection title={`Актуальные (${upcoming.length})`} rows={upcoming} busyId={busyId} onUnblock={removeSlot} />
           {past.length > 0 && (
-            <SlotSection title={`Прошедшие (${past.length})`} rows={past} busyId={busyId} onDelete={removeSlot} canDelete muted />
+            <SlotSection title={`Прошедшие (${past.length})`} rows={past} busyId={busyId} onUnblock={removeSlot} muted />
           )}
         </>
       )}
@@ -173,15 +173,13 @@ function SlotSection({
   title,
   rows,
   busyId,
-  onDelete,
-  canDelete,
+  onUnblock,
   muted,
 }: {
   title: string
   rows: BlockedSlotRow[]
   busyId: string | null
-  onDelete: (id: string) => void
-  canDelete?: boolean
+  onUnblock: (id: string) => void
   muted?: boolean
 }) {
   if (rows.length === 0) {
@@ -203,7 +201,7 @@ function SlotSection({
               <th>С</th>
               <th>По</th>
               <th>Причина</th>
-              {canDelete && <th>Действия</th>}
+              <th>Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -217,20 +215,16 @@ function SlotSection({
                 <td className="admin-mono">{formatDt(s.startsAt)}</td>
                 <td className="admin-mono">{formatDt(s.endsAt)}</td>
                 <td className="admin-muted">{s.reason ?? '—'}</td>
-                {canDelete && (
-                  <td>
-                    {!s.isPast && (
-                      <button
-                        type="button"
-                        className="admin-button sm danger"
-                        disabled={busyId === s.id}
-                        onClick={() => onDelete(s.id)}
-                      >
-                        {busyId === s.id ? '…' : 'Удалить'}
-                      </button>
-                    )}
-                  </td>
-                )}
+                <td>
+                  <button
+                    type="button"
+                    className="admin-button sm mint"
+                    disabled={busyId === s.id}
+                    onClick={() => onUnblock(s.id)}
+                  >
+                    {busyId === s.id ? '…' : 'Разблокировать'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
