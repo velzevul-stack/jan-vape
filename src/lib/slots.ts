@@ -6,10 +6,11 @@ import { storeSlotInstant } from '@/lib/dates'
 export interface SlotInfo {
   time: string
   available: boolean
-  reason?: 'busy' | 'blocked' | 'past'
+  bookingsCount: number
+  reason?: 'past'
 }
 
-const LEAD_TIME_MINUTES = 60
+const NEAR_FUTURE_BLOCK_MINUTES = 10
 
 function parseTime(hhmm: string): { hour: number; minute: number } {
   const [h, m] = hhmm.split(':').map(Number)
@@ -20,11 +21,11 @@ export function generateSlots(
   date: string,
   location: PickupLocation,
   bookings: WebBooking[],
-  blockedSlots: BlockedSlot[],
+  _blockedSlots: BlockedSlot[],
   nowOverride?: Date,
 ): SlotInfo[] {
   const now = nowOverride ?? new Date()
-  const minAvailable = new Date(now.getTime() + LEAD_TIME_MINUTES * 60 * 1000)
+  const cutoff = new Date(now.getTime() + NEAR_FUTURE_BLOCK_MINUTES * 60 * 1000)
 
   const { hour: startHour, minute: startMinute } = parseTime(location.workDayStart)
   const { hour: endHour, minute: endMinute } = parseTime(location.workDayEnd)
@@ -43,33 +44,17 @@ export function generateSlots(
     const slotStart = storeSlotInstant(date, timeStr)
     const slotEnd = new Date(slotStart.getTime() + step * 60 * 1000)
 
-    if (slotStart < minAvailable) {
-      slots.push({ time: timeStr, available: false, reason: 'past' })
-      continue
-    }
-
-    const isBlocked = blockedSlots.some((b) => {
-      const bStart = new Date(b.startsAt)
-      const bEnd = new Date(b.endsAt)
-      return slotStart < bEnd && slotEnd > bStart
-    })
-
-    if (isBlocked) {
-      slots.push({ time: timeStr, available: false, reason: 'blocked' })
-      continue
-    }
-
-    const bookingsInSlot = bookings.filter((bk) => {
+    const bookingsCount = bookings.filter((bk) => {
       const bkTime = new Date(bk.scheduledAt)
       return bkTime >= slotStart && bkTime < slotEnd
     }).length
 
-    if (bookingsInSlot >= location.maxBookingsPerSlot) {
-      slots.push({ time: timeStr, available: false, reason: 'busy' })
+    if (slotStart < cutoff) {
+      slots.push({ time: timeStr, available: false, bookingsCount, reason: 'past' })
       continue
     }
 
-    slots.push({ time: timeStr, available: true })
+    slots.push({ time: timeStr, available: true, bookingsCount })
   }
 
   return slots

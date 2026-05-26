@@ -35,7 +35,8 @@ export interface PromotedAddress {
 export interface TimeSlot {
   time: string
   available: boolean
-  reason?: 'busy' | 'blocked' | 'past'
+  bookingsCount?: number
+  reason?: 'past'
 }
 
 export interface CartItem {

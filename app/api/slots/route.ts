@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getRepo } from '@/src/lib/db'
 import { PickupLocation } from '@/src/entities/PickupLocation'
-import { WebBooking } from '@/src/entities/WebBooking'
-import { BlockedSlot } from '@/src/entities/BlockedSlot'
 import { storeDayBounds } from '@/lib/dates'
 import { generateSlots } from '@/src/lib/slots'
 
@@ -63,22 +61,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     )
     .getMany()
 
-  const blockedRepo = await getRepo('BlockedSlot')
-  const blockedSlots = await blockedRepo
-    .createQueryBuilder('bs')
-    .where('bs.startsAt < :end AND bs.endsAt > :start', {
-      start: dayStart.toISOString(),
-      end: dayEnd.toISOString(),
-    })
-    .andWhere(
-      locationId
-        ? '(bs.locationId = :locationId OR bs.locationId IS NULL)'
-        : 'bs.locationId IS NULL',
-      locationId ? { locationId } : {},
-    )
-    .getMany()
-
-  const slots = generateSlots(date, location, bookings, blockedSlots)
+  const slots = generateSlots(date, location, bookings, [])
 
   return NextResponse.json({
     date,

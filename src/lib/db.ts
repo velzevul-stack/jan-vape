@@ -8,6 +8,7 @@ import { WebSale } from '../entities/WebSale'
 import { BlockedSlot } from '../entities/BlockedSlot'
 import { SyncCursor } from '../entities/SyncCursor'
 import { IdempotencyKey } from '../entities/IdempotencyKey'
+import { NotificationOutbox } from '../entities/NotificationOutbox'
 
 export const entityRegistry = {
   ProductSnapshot,
@@ -18,6 +19,7 @@ export const entityRegistry = {
   BlockedSlot,
   SyncCursor,
   IdempotencyKey,
+  NotificationOutbox,
 } as const
 
 export const entityTableNames = {
@@ -29,6 +31,7 @@ export const entityTableNames = {
   BlockedSlot: 'blocked_slots',
   SyncCursor: 'sync_cursors',
   IdempotencyKey: 'idempotency_keys',
+  NotificationOutbox: 'notification_outbox',
 } as const
 
 export type EntityKey = keyof typeof entityRegistry

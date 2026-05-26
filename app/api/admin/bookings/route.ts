@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
+import { verifyBasicAuth, verifySyncAuth, unauthorizedResponse, maskTelegram } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
-import { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
-import { maskTelegram } from '@/src/lib/auth'
 
 const QuerySchema = z.object({
   status: z.enum(['pending', 'confirmed', 'cancelled', 'completed']).optional(),
@@ -12,7 +10,9 @@ const QuerySchema = z.object({
 })
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const isBasic = verifyBasicAuth(req)
+  const isHmac = !isBasic && verifySyncAuth(req, '')
+  if (!isBasic && !isHmac) return unauthorizedResponse()
 
   const params = Object.fromEntries(req.nextUrl.searchParams)
   const parsed = QuerySchema.safeParse(params)
@@ -36,13 +36,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const [bookings, total] = await qb.getManyAndCount()
+  const shouldMaskTelegram = !isHmac
 
   return NextResponse.json({
     bookings: bookings.map((b) => ({
       id: b.id,
       publicNumber: b.publicNumber,
       customerName: b.customerName,
-      customerTelegram: maskTelegram(b.customerTelegram),
+      customerTelegram: shouldMaskTelegram ? maskTelegram(b.customerTelegram) : b.customerTelegram,
       scheduledAt: b.scheduledAt.toISOString(),
       locationName: b.location?.name ?? null,
       customAddressLabel: b.customAddress?.label ?? null,
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       totalAmount: Number(b.totalAmount),
       status: b.status,
       createdAt: b.createdAt.toISOString(),
+      comment: b.comment ?? null,
     })),
     total,
   })

@@ -94,3 +94,22 @@ export function maskTelegram(value: string): string {
   if (value.length <= 3) return '***'
   return value.slice(0, 2) + '***'
 }
+
+export type SignedRequestHeaders = Record<string, string>
+
+export function signRequest(
+  body: string,
+  shopKey: string,
+  hmacSecret: string,
+): SignedRequestHeaders {
+  const timestamp = Date.now().toString()
+  const signature = createHmac('sha256', hmacSecret)
+    .update(`${timestamp}.${body}`)
+    .digest('hex')
+  return {
+    'X-Shop-Key': shopKey,
+    'X-Signature': signature,
+    'X-Timestamp': timestamp,
+    'Content-Type': 'application/json',
+  }
+}

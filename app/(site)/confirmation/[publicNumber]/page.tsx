@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { use } from 'react'
-import { CheckCircle, MapPin, Calendar, Clock, Copy, Check } from 'lucide-react'
+import { CheckCircle, MapPin, Calendar, Clock, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice, formatDate } from '@/lib/mock-data'
 import { Header } from '@/components/layout/Header'
@@ -34,7 +34,6 @@ interface ConfirmationPageProps {
 export default function ConfirmationPage({ params }: ConfirmationPageProps) {
   const { publicNumber } = use(params)
   const [snapshot, setSnapshot] = useState<ConfirmationSnapshot | null>(null)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const raw = sessionStorage.getItem(`confirmation-${publicNumber}`)
@@ -42,16 +41,10 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
       try {
         setSnapshot(JSON.parse(raw))
       } catch {
-        /* ignore */
+        return
       }
     }
   }, [publicNumber])
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(publicNumber)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const scheduledDate = snapshot ? new Date(snapshot.scheduledAt) : null
   const dateLabel = scheduledDate ? formatDate(scheduledDate) : null
@@ -70,7 +63,7 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
         <main className="flex flex-1 items-center justify-center px-4 py-8">
           <div className="text-center">
             <h2 className="font-display text-2xl font-bold text-text-on-dark">
-              БРОНИРОВАНИЕ НЕ НАЙДЕНО
+              ЗАЯВКА НА БРОНЬ НЕ НАЙДЕНА
             </h2>
             <p className="mt-2 text-text-muted">
               Данные доступны только в текущей сессии браузера
@@ -99,35 +92,31 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
               <CheckCircle className="h-10 w-10 text-status-success" />
             </div>
             <h1 className="font-display text-3xl font-bold tracking-wider text-text-on-dark md:text-4xl">
-              БРОНЬ ОФОРМЛЕНА
+              ЗАЯВКА ОТПРАВЛЕНА
             </h1>
             <p className="mt-2 text-text-muted">
-              Ожидаем вас в указанное время
+              Ожидайте подтверждения от продавца
             </p>
           </div>
 
-          <div className="mb-6 rounded-3xl bg-card p-6 text-center">
-            <div className="mb-2 text-sm text-text-muted">Номер бронирования</div>
-            <div className="flex items-center justify-center gap-3">
-              <span className="font-display text-2xl font-bold tracking-wider text-text-on-card md:text-3xl">
-                {publicNumber}
+          <div className="mb-6 rounded-3xl border border-accent-primary/30 bg-accent-mist p-6 text-center">
+            <div className="mb-3 flex justify-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-primary/20 text-accent-soft">
+                <Send className="h-5 w-5" />
               </span>
-              <button
-                onClick={copyToClipboard}
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-full transition-all',
-                  copied
-                    ? 'bg-status-success text-text-on-accent'
-                    : 'bg-card-inner text-text-on-dark hover:bg-accent-primary hover:text-text-on-accent'
-                )}
-                aria-label="Копировать"
-              >
-                {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-              </button>
             </div>
-            <p className="mt-3 text-xs text-text-muted">
-              Назовите этот номер продавцу при получении
+            <h2 className="font-display text-base font-bold tracking-wider text-text-on-dark md:text-lg">
+              Мы напишем в Telegram, как только подтвердим время
+            </h2>
+            <p className="mt-2 text-sm text-text-muted">
+              Продавец подтверждает каждую бронь вручную. Это обычно занимает несколько минут.
             </p>
+          </div>
+
+          <div className="mb-4">
+            <h3 className="mb-3 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
+              ВЫ ЗАПРОСИЛИ
+            </h3>
           </div>
 
           <div className="mb-6 space-y-4">
@@ -159,7 +148,7 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
                   <Clock className="h-5 w-5 text-accent-primary" />
                 </div>
                 <div>
-                  <div className="text-sm text-text-muted">Время</div>
+                  <div className="text-sm text-text-muted">Желаемое время</div>
                   <div className="font-medium text-text-on-dark">{timeLabel}</div>
                 </div>
               </div>
@@ -208,7 +197,7 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
                 <div className="font-medium text-text-on-dark">{snapshot.customerName}</div>
               </div>
               <div>
-                <div className="text-sm text-text-muted">Telegram</div>
+                <div className="text-sm text-text-muted">Telegram для связи</div>
                 <div className="font-medium text-text-on-dark">{snapshot.customerTelegram}</div>
               </div>
             </div>
@@ -226,7 +215,7 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
           </Link>
 
           <p className="mt-4 text-center text-sm text-text-muted">
-            Бронирование действительно 24 часа. Оплата при получении.
+            Оплата при получении в магазине
           </p>
         </PageContainer>
       </main>

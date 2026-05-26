@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { normalizeAddress } from '@/src/lib/normalize'
+import { In } from 'typeorm'
 import { entityTableNames, getDataSource } from '@/src/lib/db'
+import { enqueueNotification } from '@/src/lib/notifier'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
@@ -32,6 +34,23 @@ function generatePublicNumber(): string {
   return `B-${datePart}-${rand}`
 }
 
+interface SavedBookingResult {
+  bookingId: string
+  publicNumber: string
+  scheduledAt: string
+  customerName: string
+  customerTelegram: string
+  comment: string | null
+  totalAmount: number
+  locationLabel: string | null
+  customAddressLabel: string | null
+  itemsSnapshot: Array<{
+    productId: string
+    quantity: number
+    retailPriceSnapshot: number
+  }>
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: unknown
   try {
@@ -50,22 +69,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const ds = await getDataSource()
 
-  return ds.transaction(async (txn) => {
+  let saved: SavedBookingResult | null = null
+  let errorResponse: NextResponse | null = null
+
+  await ds.transaction(async (txn) => {
     const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
     const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
     const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
 
     let locationId: string | null = null
     let customAddressId: string | null = null
-    let maxBookings = 1
+    let locationLabel: string | null = null
+    let customAddressLabel: string | null = null
 
     if (data.pickupLocationId) {
       const loc = await locationRepo.findOne({ where: { id: data.pickupLocationId } })
       if (!loc || !loc.isActive) {
-        return NextResponse.json({ error: 'Location not found' }, { status: 404 })
+        errorResponse = NextResponse.json({ error: 'Location not found' }, { status: 404 })
+        return
       }
       locationId = loc.id
-      maxBookings = loc.maxBookingsPerSlot
+      locationLabel = loc.name
     } else if (data.customAddressText) {
       const key = normalizeAddress(data.customAddressText)
       let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
@@ -79,31 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         await addressRepo.save(addr)
       }
       customAddressId = addr.id
-    }
-
-    const slotStart = new Date(scheduledAt)
-    const slotEnd = new Date(scheduledAt.getTime() + 5 * 60 * 1000)
-
-    const existingCount = await bookingRepo
-      .createQueryBuilder('wb')
-      .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
-      .andWhere('wb.scheduledAt >= :start AND wb.scheduledAt < :end', {
-        start: slotStart.toISOString(),
-        end: slotEnd.toISOString(),
-      })
-      .andWhere(
-        locationId
-          ? 'wb.locationId = :locationId'
-          : 'wb.locationId IS NULL',
-        locationId ? { locationId } : {},
-      )
-      .getCount()
-
-    if (existingCount >= maxBookings) {
-      return NextResponse.json(
-        { error: 'This time slot is already taken. Please choose another time.' },
-        { status: 409 },
-      )
+      customAddressLabel = addr.label
     }
 
     const totalAmount = data.items.reduce(
@@ -127,16 +127,86 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     await bookingRepo.save(booking)
 
-    revalidatePath('/admin')
-    revalidatePath('/admin/bookings')
-
-    return NextResponse.json(
-      {
-        publicNumber: booking.publicNumber,
-        bookingId: booking.id,
-        scheduledAt: booking.scheduledAt.toISOString(),
-      },
-      { status: 201 },
-    )
+    saved = {
+      bookingId: booking.id,
+      publicNumber: booking.publicNumber,
+      scheduledAt: booking.scheduledAt.toISOString(),
+      customerName: booking.customerName,
+      customerTelegram: booking.customerTelegram,
+      comment: booking.comment,
+      totalAmount,
+      locationLabel,
+      customAddressLabel,
+      itemsSnapshot: data.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        retailPriceSnapshot: item.retailPriceSnapshot,
+      })),
+    }
   })
+
+  if (errorResponse) return errorResponse
+  if (!saved) {
+    return NextResponse.json({ error: 'Failed to save booking' }, { status: 500 })
+  }
+
+  const savedBooking = saved as SavedBookingResult
+
+  const productRepo = (await getDataSource()).getRepository(entityTableNames.ProductSnapshot)
+  const productIds = Array.from(new Set(savedBooking.itemsSnapshot.map((i) => i.productId)))
+  const products =
+    productIds.length > 0 ? await productRepo.find({ where: { id: In(productIds) } }) : []
+  const productMap = new Map(products.map((p) => [p.id, p]))
+
+  const adminEventsBase = process.env.NOTIFY_ADMIN_BOT_URL
+  if (adminEventsBase) {
+    const endpoint = joinEndpoint(adminEventsBase, '/events/booking-created')
+    const payload = {
+      type: 'booking_created',
+      bookingId: savedBooking.bookingId,
+      publicNumber: savedBooking.publicNumber,
+      customerName: savedBooking.customerName,
+      customerTelegram: savedBooking.customerTelegram,
+      scheduledAt: savedBooking.scheduledAt,
+      location: savedBooking.locationLabel,
+      customAddress: savedBooking.customAddressLabel,
+      items: savedBooking.itemsSnapshot.map((item) => {
+        const product = productMap.get(item.productId)
+        return {
+          flavor: product?.flavor ?? '',
+          brand: product?.brand ?? '',
+          quantity: item.quantity,
+          price: item.retailPriceSnapshot,
+        }
+      }),
+      totalAmount: savedBooking.totalAmount,
+      comment: savedBooking.comment,
+    }
+    try {
+      await enqueueNotification(endpoint, payload)
+    } catch (err) {
+      console.error('[bookings] failed to enqueue admin-bot notification', err)
+    }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/bookings')
+
+  return NextResponse.json(
+    {
+      publicNumber: savedBooking.publicNumber,
+      bookingId: savedBooking.bookingId,
+      scheduledAt: savedBooking.scheduledAt,
+    },
+    { status: 201 },
+  )
+}
+
+function joinEndpoint(base: string, path: string): string {
+  if (!base) return path
+  const trimmed = base.replace(/\/+$/, '')
+  if (trimmed.endsWith('/events') && path.startsWith('/events')) {
+    return trimmed + path.slice('/events'.length)
+  }
+  return trimmed + path
 }

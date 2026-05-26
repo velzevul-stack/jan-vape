@@ -93,17 +93,6 @@ export default function CheckoutPage() {
         body: JSON.stringify(body),
       })
 
-      if (res.status === 409) {
-        setSubmitError('Это время уже занято. Пожалуйста, выберите другое.')
-        await mutate(
-          (key: string) => typeof key === 'string' && key.startsWith('/api/slots'),
-          undefined,
-          { revalidate: true },
-        )
-        setIsSubmitting(false)
-        return
-      }
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         setSubmitError(err.error ?? 'Произошла ошибка. Попробуйте ещё раз.')

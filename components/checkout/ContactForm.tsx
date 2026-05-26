@@ -1,9 +1,16 @@
 'use client'
 
-import { Send, User, MessageSquare } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Send, User, MessageSquare, Eraser } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { useBooking } from '@/lib/context/booking-context'
+import {
+  readCustomerProfile,
+  writeCustomerName,
+  writeCustomerTelegram,
+  clearCustomerProfile,
+} from '@/lib/storage/customerProfile'
 
 export function ContactForm() {
   const {
@@ -14,6 +21,28 @@ export function ContactForm() {
     setCustomerTelegram,
     setComment,
   } = useBooking()
+
+  const hydratedRef = useRef(false)
+  const [profileLoaded, setProfileLoaded] = useState(false)
+
+  useEffect(() => {
+    if (hydratedRef.current) return
+    hydratedRef.current = true
+    const stored = readCustomerProfile()
+    if (!customerName && stored.name) setCustomerName(stored.name)
+    if (!customerTelegram && stored.telegram) setCustomerTelegram(stored.telegram)
+    setProfileLoaded(true)
+  }, [customerName, customerTelegram, setCustomerName, setCustomerTelegram])
+
+  useEffect(() => {
+    if (!profileLoaded) return
+    writeCustomerName(customerName.trim())
+  }, [customerName, profileLoaded])
+
+  useEffect(() => {
+    if (!profileLoaded) return
+    writeCustomerTelegram(customerTelegram.trim())
+  }, [customerTelegram, profileLoaded])
 
   const handleTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
@@ -34,6 +63,14 @@ export function ContactForm() {
       setCustomerTelegram(normalizeTelegramUsername(customerTelegram))
     }
   }
+
+  const handleClearProfile = () => {
+    clearCustomerProfile()
+    setCustomerName('')
+    setCustomerTelegram('')
+  }
+
+  const hasStoredProfile = customerName.trim().length > 0 || customerTelegram.trim().length > 0
 
   return (
     <div className="w-full">
@@ -64,7 +101,7 @@ export function ContactForm() {
           label="Telegram"
           required
           icon={<Send className="h-5 w-5" />}
-          hint="Напишем о готовности заказа"
+          hint="Напишем сюда, когда подтвердим бронь"
         >
           <input
             id="telegram"
@@ -103,6 +140,17 @@ export function ContactForm() {
             />
           </div>
         </div>
+
+        {hasStoredProfile && (
+          <button
+            type="button"
+            onClick={handleClearProfile}
+            className="inline-flex items-center gap-1.5 text-xs text-text-muted underline-offset-2 hover:text-accent-soft hover:underline"
+          >
+            <Eraser className="h-3.5 w-3.5" />
+            Очистить данные
+          </button>
+        )}
       </div>
     </div>
   )

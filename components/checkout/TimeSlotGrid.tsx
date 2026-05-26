@@ -39,37 +39,39 @@ function SlotButton({
   selected: boolean
   onSelect: () => void
 }) {
+  const isPast = slot.reason === 'past'
   const isDisabled = !slot.available
-  const reasonText =
-    slot.reason === 'busy'
-      ? 'Занято'
-      : slot.reason === 'blocked'
-        ? 'Недоступно'
-        : slot.reason === 'past'
-          ? 'Прошло'
-          : undefined
+  const hasBookings = (slot.bookingsCount ?? 0) > 0
+  const tooltip = isPast
+    ? 'Время уже прошло или слишком близко'
+    : hasBookings
+      ? `Уже есть бронь(и) на это время — продавец подтвердит вручную`
+      : 'Время доступно'
 
   return (
     <button
       type="button"
       onClick={() => !isDisabled && onSelect()}
       disabled={isDisabled}
-      title={reasonText}
+      title={tooltip}
       data-selected={selected || undefined}
       className={cn(
         'group/slot relative flex h-12 items-center justify-center rounded-xl text-sm font-semibold tabular-nums transition-all duration-200',
         selected
           ? 'scale-[1.04] bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/40 ring-1 ring-accent-soft'
-          : slot.reason === 'busy'
-            ? 'cursor-not-allowed bg-card-inner/50 text-text-muted/40 line-through'
-            : slot.reason === 'blocked'
-              ? 'cursor-not-allowed bg-card-inner/30 text-text-muted/30'
-              : slot.reason === 'past'
-                ? 'cursor-not-allowed bg-card-inner/40 text-text-faint opacity-40'
-                : 'bg-card-inner text-text-on-dark hover:-translate-y-px hover:bg-accent-mist hover:text-accent-soft hover:shadow-md hover:shadow-accent-primary/15',
+          : isPast
+            ? 'cursor-not-allowed bg-card-inner/40 text-text-faint opacity-40'
+            : hasBookings
+              ? 'bg-accent-mist text-accent-soft ring-1 ring-accent-primary/40 hover:-translate-y-px hover:bg-accent-primary/15'
+              : 'bg-card-inner text-text-on-dark hover:-translate-y-px hover:bg-accent-mist hover:text-accent-soft hover:shadow-md hover:shadow-accent-primary/15',
       )}
     >
       <span>{slot.time}</span>
+      {hasBookings && !isPast && !selected && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-primary px-1 text-[10px] font-bold tabular-nums text-text-on-accent shadow">
+          {slot.bookingsCount}
+        </span>
+      )}
       {selected && (
         <span className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-accent-soft/60" />
       )}
@@ -89,8 +91,8 @@ function SlotLegend() {
         Выбрано
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-3 w-3 rounded bg-card-inner/50" />
-        <span className="line-through">Занято</span>
+        <span className="h-3 w-3 rounded bg-accent-mist ring-1 ring-accent-primary/40" />
+        Уже есть бронь (но можно выбрать)
       </span>
       <span className="inline-flex items-center gap-1.5 opacity-60">
         <span className="h-3 w-3 rounded bg-card-inner" />
@@ -241,7 +243,7 @@ export function TimeSlotGrid() {
                     </div>
                   ) : (
                     <div className="rounded-xl bg-card-inner/40 px-4 py-3 text-center text-xs text-text-faint">
-                      Все слоты этого периода заняты
+                      В этом периоде нет доступного времени
                     </div>
                   )}
                 </section>

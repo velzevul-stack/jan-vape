@@ -1,4 +1,4 @@
-import { Zap, Clock, Shield } from 'lucide-react'
+import { Zap, Shield, Heart } from 'lucide-react'
 
 export function HeroSection() {
   return (
@@ -8,20 +8,6 @@ export function HeroSection() {
       <div className="pointer-events-none absolute -bottom-32 -left-10 h-72 w-72 rounded-full bg-accent-mint/10 blur-3xl" />
 
       <div className="relative px-5 py-10 sm:px-8 sm:py-12 lg:py-14">
-        <div className="hero-line mb-5 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-primary px-3 py-1 font-display text-[11px] font-extrabold tracking-[0.22em] text-text-on-accent shadow-lg shadow-accent-primary/40">
-            <span className="h-1.5 w-1.5 rounded-full bg-text-on-accent" />
-            JAN-VAPE
-          </span>
-          <span className="inline-flex items-center rounded-full border border-border-on-dark bg-elevated/80 px-3 py-1 text-xs font-medium text-text-muted">
-            г. Ивацевичи
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-mint/30 bg-accent-mint/10 px-3 py-1 text-xs font-medium text-accent-mint">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-mint" />
-            Каталог онлайн
-          </span>
-        </div>
-
         <h1 className="font-display font-black tracking-wider text-text-on-dark">
           <span className="hero-line block text-4xl leading-[0.95] sm:text-5xl lg:text-7xl">
             ВЫБИРАЙ
@@ -41,7 +27,7 @@ export function HeroSection() {
 
         <div className="hero-line mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <FeatureRow icon={<Zap className="h-4 w-4" />} text="Актуальные остатки в реальном времени" />
-          <FeatureRow icon={<Clock className="h-4 w-4" />} text="Бронь действительна 24 часа" />
+          <FeatureRow icon={<Heart className="h-4 w-4" />} text="Подтверждение брони от продавца в Telegram" />
           <FeatureRow icon={<Shield className="h-4 w-4" />} text="Оплата при получении" />
         </div>
 
