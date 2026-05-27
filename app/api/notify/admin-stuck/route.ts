@@ -4,10 +4,13 @@ import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
 import { enqueueNotification } from '@/src/lib/notifier'
 import { enqueueAppAlert } from '@/src/lib/appAlerts'
+import { findBookingByTelegram } from '@/src/lib/telegramBooking'
+import { normalizeTelegramUsername } from '@/lib/telegram'
 
 const PayloadSchema = z.object({
   customerTelegram: z.string().min(2).max(255),
   lastMessage: z.string().max(2000).optional(),
+  notifyKind: z.enum(['summon', 'client_message']).default('summon'),
 })
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -26,7 +29,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const { customerTelegram, lastMessage } = parsed.data
+    const { customerTelegram, lastMessage, notifyKind } = parsed.data
+    const normalizedTelegram = normalizeTelegramUsername(customerTelegram)
 
     const adminBase = process.env.NOTIFY_ADMIN_BOT_URL
     if (!adminBase) {
@@ -35,27 +39,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const bookingRepo = await getRepo('WebBooking')
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-    const recent = await bookingRepo
-      .createQueryBuilder('wb')
-      .where('wb.customerTelegram = :tg', { tg: customerTelegram })
-      .andWhere('wb.createdAt >= :since', { since: oneHourAgo.toISOString() })
-      .orderBy('wb.createdAt', 'DESC')
-      .limit(1)
-      .getOne()
+    const recentInHour = await findBookingByTelegram(bookingRepo, normalizedTelegram, {
+      since: oneHourAgo,
+    })
+    const activeBooking = await findBookingByTelegram(bookingRepo, normalizedTelegram, {
+      statuses: ['pending', 'confirmed'],
+    })
 
     const endpoint = joinEndpoint(adminBase, '/events/customer-stuck')
     const payload = {
       type: 'customer_stuck',
-      customerTelegram,
+      notifyKind,
+      customerTelegram: normalizedTelegram,
       lastMessage: lastMessage ?? null,
-      noBookingSince: recent ? null : oneHourAgo.toISOString(),
+      hasActiveBooking: Boolean(activeBooking),
+      publicNumber: activeBooking?.publicNumber ?? null,
+      bookingStatus: activeBooking?.status ?? null,
+      hasBookingInLastHour: Boolean(recentInHour),
     }
 
     await enqueueNotification(endpoint, payload)
-    await enqueueAppAlert('customer_stuck', {
-      customerTelegram,
-      lastMessage: lastMessage ?? null,
-    })
+    await enqueueAppAlert('customer_stuck', payload)
 
     return NextResponse.json({ ok: true, dispatched: true })
   })

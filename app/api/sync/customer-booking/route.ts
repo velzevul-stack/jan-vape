@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { verifySyncAuth } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
+import { findBookingByTelegram } from '@/src/lib/telegramBooking'
 
 const QuerySchema = z.object({
   customerTelegram: z.string().min(2).max(255),
@@ -23,14 +24,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const sinceDate = new Date(since || 0)
 
   const repo = await getRepo('WebBooking')
-  const booking = await repo
-    .createQueryBuilder('wb')
-    .where('wb.customerTelegram = :tg', { tg: customerTelegram })
-    .andWhere('wb.createdAt >= :since', { since: sinceDate.toISOString() })
-    .andWhere('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed', 'completed'] })
-    .orderBy('wb.createdAt', 'DESC')
-    .limit(1)
-    .getOne()
+  const booking = await findBookingByTelegram(repo, customerTelegram, {
+    since: sinceDate,
+    statuses: ['pending', 'confirmed', 'completed'],
+  })
 
   return NextResponse.json({ hasBooking: Boolean(booking) })
 }
