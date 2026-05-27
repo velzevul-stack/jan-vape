@@ -94,10 +94,6 @@ function SlotLegend() {
         <span className="h-3 w-3 rounded bg-accent-mist ring-1 ring-accent-primary/40" />
         Уже есть бронь (но можно выбрать)
       </span>
-      <span className="inline-flex items-center gap-1.5 opacity-60">
-        <span className="h-3 w-3 rounded bg-card-inner" />
-        Прошло
-      </span>
     </div>
   )
 }
@@ -119,6 +115,19 @@ export function TimeSlotGrid() {
     })
     return groups
   }, [slots])
+
+  const visiblePeriods = useMemo(
+    () => PERIODS.filter((period) => slotsByPeriod[period.id].some((slot) => slot.available)),
+    [slotsByPeriod],
+  )
+
+  useEffect(() => {
+    if (!pickupTime || slots.length === 0) return
+    const selected = slots.find((slot) => slot.time === pickupTime)
+    if (!selected?.available) {
+      setPickupTime(null)
+    }
+  }, [slots, pickupTime, setPickupTime])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const selectedRef = useRef<HTMLDivElement | null>(null)
@@ -171,7 +180,7 @@ export function TimeSlotGrid() {
     )
   }
 
-  if (slots.length === 0) {
+  if (slots.length === 0 || visiblePeriods.length === 0) {
     return (
       <PromptState
         icon={<AlertCircle className="h-5 w-5 text-status-warning" />}
@@ -200,10 +209,9 @@ export function TimeSlotGrid() {
       >
         <div className="max-h-[min(60vh,28rem)] overflow-y-auto scrollbar-slim p-4 sm:p-5">
           <div className="space-y-5">
-            {PERIODS.map((period) => {
-              const periodSlots = slotsByPeriod[period.id]
+            {visiblePeriods.map((period) => {
+              const periodSlots = slotsByPeriod[period.id].filter((slot) => slot.available)
               if (periodSlots.length === 0) return null
-              const hasAnyAvailable = periodSlots.some((s) => s.available)
 
               return (
                 <section key={period.id} className="space-y-3">
@@ -221,31 +229,23 @@ export function TimeSlotGrid() {
                       </span>
                       {period.label}
                     </h4>
-                    <span className="text-xs text-text-faint">
-                      {periodSlots.filter((s) => s.available).length} / {periodSlots.length}
-                    </span>
+                    <span className="text-xs text-text-faint">{periodSlots.length}</span>
                   </header>
 
-                  {hasAnyAvailable ? (
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-                      {periodSlots.map((slot) => (
-                        <div
-                          key={slot.time}
-                          ref={slot.time === pickupTime ? selectedRef : undefined}
-                        >
-                          <SlotButton
-                            slot={slot}
-                            selected={slot.time === pickupTime}
-                            onSelect={() => setPickupTime(slot.time)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl bg-card-inner/40 px-4 py-3 text-center text-xs text-text-faint">
-                      В этом периоде нет доступного времени
-                    </div>
-                  )}
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                    {periodSlots.map((slot) => (
+                      <div
+                        key={slot.time}
+                        ref={slot.time === pickupTime ? selectedRef : undefined}
+                      >
+                        <SlotButton
+                          slot={slot}
+                          selected={slot.time === pickupTime}
+                          onSelect={() => setPickupTime(slot.time)}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </section>
               )
             })}

@@ -72,21 +72,32 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   }, [state, isHydrated])
 
   const setPickupLocation = useCallback((locationId: string) => {
-    setState((prev) => ({
-      ...prev,
-      pickupLocationId: locationId,
-      customAddressText: null,
-      pickupTime: null,
-    }))
+    setState((prev) => {
+      if (prev.pickupLocationId === locationId && !prev.customAddressText) {
+        return prev
+      }
+      return {
+        ...prev,
+        pickupLocationId: locationId,
+        customAddressText: null,
+        pickupTime: null,
+      }
+    })
   }, [])
 
   const setCustomAddress = useCallback((text: string) => {
-    setState((prev) => ({
-      ...prev,
-      pickupLocationId: null,
-      customAddressText: text || null,
-      pickupTime: null,
-    }))
+    const trimmed = text.trim()
+    setState((prev) => {
+      if (prev.customAddressText === trimmed && !prev.pickupLocationId) {
+        return prev
+      }
+      return {
+        ...prev,
+        pickupLocationId: null,
+        customAddressText: trimmed || null,
+        pickupTime: null,
+      }
+    })
   }, [])
 
   const clearLocation = useCallback(() => {
