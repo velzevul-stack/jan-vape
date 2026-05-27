@@ -5,7 +5,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm'
 
-export type AppAlertType = 'customer_stuck'
+export type AppAlertType = 'customer_stuck' | 'booking_cancelled_by_customer'
 
 @Entity('app_alerts')
 export class AppAlert {
