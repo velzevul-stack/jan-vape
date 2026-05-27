@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifySyncAuth } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
 import { WebBooking } from '@/src/entities/WebBooking'
-import { MoreThanOrEqual } from 'typeorm'
+import { In, MoreThanOrEqual } from 'typeorm'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!verifySyncAuth(req, '')) {
@@ -25,6 +25,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     take: limit,
   })
 
+  const snapshotIds = Array.from(
+    new Set(bookings.flatMap((b) => b.items.map((item) => item.productId))),
+  )
+  const productRepo = await getRepo('ProductSnapshot')
+  const snapshots =
+    snapshotIds.length > 0
+      ? await productRepo.find({ where: { id: In(snapshotIds) } })
+      : []
+  const externalIdBySnapshotId = new Map(
+    snapshots.map((p) => [p.id, p.externalId] as const),
+  )
+
   const result = bookings.map((b) => ({
     id: b.id,
     publicNumber: b.publicNumber,
@@ -38,7 +50,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     locationAddress: b.location?.address ?? null,
     customAddressId: b.customAddressId,
     customAddressLabel: b.customAddress?.label ?? null,
-    items: b.items,
+    items: b.items.map((item) => ({
+      ...item,
+      externalId: externalIdBySnapshotId.get(item.productId) ?? null,
+    })),
     totalAmount: Number(b.totalAmount),
     status: b.status,
     appReservationId: b.appReservationId,
