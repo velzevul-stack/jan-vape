@@ -37,6 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const statusChanges: Array<{
       bookingId: string
       newStatus: WebBookingStatus
+      previousStatus: WebBookingStatus
       reason: string | null
     }> = []
 
@@ -56,12 +57,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       await repo.update(booking.id, updateData)
       updated++
 
-      if (previousStatus !== newStatus && (newStatus === 'confirmed' || newStatus === 'cancelled')) {
-        statusChanges.push({
-          bookingId: booking.id,
-          newStatus,
-          reason: u.reason ?? null,
-        })
+      if (previousStatus !== newStatus) {
+        if (newStatus === 'confirmed' || newStatus === 'cancelled' || newStatus === 'completed') {
+          statusChanges.push({
+            bookingId: booking.id,
+            newStatus,
+            previousStatus,
+            reason: u.reason ?? null,
+          })
+        }
       }
     }
 
@@ -79,7 +83,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 async function dispatchUserbotEvents(
-  changes: Array<{ bookingId: string; newStatus: WebBookingStatus; reason: string | null }>,
+  changes: Array<{
+    bookingId: string
+    newStatus: WebBookingStatus
+    previousStatus: WebBookingStatus
+    reason: string | null
+  }>,
 ): Promise<void> {
   const userbotBase = process.env.NOTIFY_USERBOT_URL
   if (!userbotBase) return
@@ -142,6 +151,19 @@ async function dispatchUserbotEvents(
         await enqueueNotification(endpoint, payload)
       } catch (err) {
         console.error('[reservations/status] enqueue cancelled failed', err)
+      }
+    } else if (change.newStatus === 'completed') {
+      const endpoint = joinEndpoint(userbotBase, '/events/sale-completed')
+      const payload = {
+        type: 'sale_completed',
+        bookingId: booking.id,
+        publicNumber: booking.publicNumber,
+        customerTelegram: booking.customerTelegram,
+      }
+      try {
+        await enqueueNotification(endpoint, payload)
+      } catch (err) {
+        console.error('[reservations/status] enqueue sale-completed failed', err)
       }
     }
   }

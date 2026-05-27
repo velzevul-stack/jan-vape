@@ -9,6 +9,7 @@ import { BlockedSlot } from '../entities/BlockedSlot'
 import { SyncCursor } from '../entities/SyncCursor'
 import { IdempotencyKey } from '../entities/IdempotencyKey'
 import { NotificationOutbox } from '../entities/NotificationOutbox'
+import { AppAlert } from '../entities/AppAlert'
 
 export const entityRegistry = {
   ProductSnapshot,
@@ -20,6 +21,7 @@ export const entityRegistry = {
   SyncCursor,
   IdempotencyKey,
   NotificationOutbox,
+  AppAlert,
 } as const
 
 export const entityTableNames = {
@@ -32,6 +34,7 @@ export const entityTableNames = {
   SyncCursor: 'sync_cursors',
   IdempotencyKey: 'idempotency_keys',
   NotificationOutbox: 'notification_outbox',
+  AppAlert: 'app_alerts',
 } as const
 
 export type EntityKey = keyof typeof entityRegistry

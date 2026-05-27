@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { normalizeAddress } from '@/src/lib/normalize'
 import { In } from 'typeorm'
 import { entityTableNames, getDataSource } from '@/src/lib/db'
+import { findBookingStockIssues } from '@/src/lib/availability'
 import { enqueueNotification } from '@/src/lib/notifier'
 
 const BookingSchema = z.object({
@@ -106,6 +107,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       customAddressLabel = addr.label
     }
 
+    const stockIssues = await findBookingStockIssues(
+      data.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      txn,
+    )
+    if (stockIssues.length > 0) {
+      errorResponse = NextResponse.json(
+        { error: 'Insufficient stock', issues: stockIssues },
+        { status: 409 },
+      )
+      return
+    }
+
     const totalAmount = data.items.reduce(
       (sum, item) => sum + item.retailPriceSnapshot * item.quantity,
       0,
@@ -191,6 +207,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   revalidatePath('/admin')
   revalidatePath('/admin/bookings')
+  revalidatePath('/')
 
   return NextResponse.json(
     {

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { type Product, type CartItem, productAvailableStock } from '@/lib/mock-data'
+import { resolveCartLinesAgainstCatalog } from '@/lib/api/catalogClient'
 
 interface CartContextType {
   items: CartItem[]
@@ -9,6 +10,7 @@ interface CartContextType {
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   clearCart: () => void
+  syncWithCatalog: (products: Product[]) => void
   getItemQuantity: (productId: string) => number
   totalItems: number
   totalPrice: number
@@ -22,7 +24,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
 
-  // Load cart from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(CART_STORAGE_KEY)
     if (stored) {
@@ -35,7 +36,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsHydrated(true)
   }, [])
 
-  // Save cart to localStorage when items change
   useEffect(() => {
     if (isHydrated) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
@@ -78,6 +78,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([])
   }, [])
 
+  const syncWithCatalog = useCallback((products: Product[]) => {
+    setItems((prev) => {
+      if (prev.length === 0) return prev
+      const { lines } = resolveCartLinesAgainstCatalog(prev, products)
+      return lines
+    })
+  }, [])
+
   const getItemQuantity = useCallback((productId: string) => {
     return items.find(item => item.product.id === productId)?.quantity ?? 0
   }, [items])
@@ -93,6 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeItem,
         updateQuantity,
         clearCart,
+        syncWithCatalog,
         getItemQuantity,
         totalItems,
         totalPrice,

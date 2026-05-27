@@ -16,9 +16,13 @@ interface CatalogResponse {
   strengthValues?: string[]
 }
 
+export type UseCatalogOptions = {
+  refreshInterval?: number
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
-export function useCatalog(params: CatalogParams = {}) {
+export function useCatalog(params: CatalogParams = {}, options: UseCatalogOptions = {}) {
   const searchParams = new URLSearchParams()
   if (params.category) searchParams.set('category', params.category)
   if (params.taste) searchParams.set('taste', params.taste)
@@ -31,7 +35,7 @@ export function useCatalog(params: CatalogParams = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<CatalogResponse>(url, fetcher, {
     revalidateOnFocus: true,
-    refreshInterval: 15_000,
+    refreshInterval: options.refreshInterval ?? 15_000,
     dedupingInterval: 4_000,
   })
 

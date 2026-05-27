@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
 import { enqueueNotification } from '@/src/lib/notifier'
+import { enqueueAppAlert } from '@/src/lib/appAlerts'
 
 const PayloadSchema = z.object({
   customerTelegram: z.string().min(2).max(255),
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     await enqueueNotification(endpoint, payload)
+    await enqueueAppAlert('customer_stuck', {
+      customerTelegram,
+      lastMessage: lastMessage ?? null,
+    })
 
     return NextResponse.json({ ok: true, dispatched: true })
   })

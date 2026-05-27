@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, MapPin, Check } from 'lucide-react'
@@ -21,11 +21,14 @@ import { isValidTelegramUsername, normalizeTelegramUsername } from '@/lib/telegr
 import { mutate } from 'swr'
 import { usePickupLocations } from '@/lib/api/hooks/usePickupLocations'
 import { useCatalog } from '@/lib/api/hooks/useCatalog'
+import { fetchCatalogFresh, resolveCartLinesAgainstCatalog } from '@/lib/api/catalogClient'
+
+const CATALOG_REFRESH_MS = 5_000
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, totalItems, totalPrice, clearCart } = useCart()
-  const { products } = useCatalog()
+  const { items, totalItems, totalPrice, clearCart, syncWithCatalog } = useCart()
+  const { products } = useCatalog({}, { refreshInterval: CATALOG_REFRESH_MS })
   const { locations } = usePickupLocations()
   const orderItems = useMemo(
     () =>
@@ -42,6 +45,13 @@ export default function CheckoutPage() {
       }),
     [items, products],
   )
+
+  useEffect(() => {
+    if (products.length > 0) {
+      syncWithCatalog(products)
+    }
+  }, [products, syncWithCatalog])
+
   const {
     pickupLocationId,
     customAddressText,
@@ -72,6 +82,29 @@ export default function CheckoutPage() {
 
     const scheduledAt = buildStoreDateTime(pickupDate, pickupTime).toISOString()
 
+    let catalog
+    try {
+      catalog = await fetchCatalogFresh()
+    } catch {
+      setSubmitError('Не удалось обновить каталог. Попробуйте ещё раз.')
+      setIsSubmitting(false)
+      return
+    }
+
+    const { lines, removed, adjusted } = resolveCartLinesAgainstCatalog(items, catalog.products)
+    if (removed.length > 0 || adjusted.length > 0) {
+      syncWithCatalog(catalog.products)
+      setSubmitError('Состав корзины изменился — проверьте доступность товаров и попробуйте снова.')
+      setIsSubmitting(false)
+      return
+    }
+
+    if (lines.length === 0) {
+      setSubmitError('В корзине нет доступных товаров.')
+      setIsSubmitting(false)
+      return
+    }
+
     const body = {
       ...(pickupLocationId ? { pickupLocationId } : {}),
       ...(customAddressText ? { customAddressText } : {}),
@@ -79,7 +112,7 @@ export default function CheckoutPage() {
       customerName: customerName.trim(),
       customerTelegram: normalizeTelegramUsername(customerTelegram),
       comment: comment.trim() || undefined,
-      items: items.map((item) => ({
+      items: lines.map((item) => ({
         productId: item.product.id,
         quantity: item.quantity,
         retailPriceSnapshot: item.product.retailPrice,
@@ -95,7 +128,17 @@ export default function CheckoutPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        setSubmitError(err.error ?? 'Произошла ошибка. Попробуйте ещё раз.')
+        if (res.status === 409) {
+          await mutate(
+            (key: string) => typeof key === 'string' && key.startsWith('/api/catalog'),
+            undefined,
+            { revalidate: true },
+          )
+          syncWithCatalog(catalog.products)
+          setSubmitError('Недостаточно товара на посту. Корзина обновлена — проверьте заказ.')
+        } else {
+          setSubmitError(err.error ?? 'Произошла ошибка. Попробуйте ещё раз.')
+        }
         setIsSubmitting(false)
         return
       }
@@ -114,13 +157,13 @@ export default function CheckoutPage() {
           customerTelegram: normalizeTelegramUsername(customerTelegram),
           locationLabel,
           scheduledAt: buildStoreDateTime(pickupDate, pickupTime).toISOString(),
-          items: items.map(i => ({
+          items: lines.map((i) => ({
             brand: i.product.brand,
             flavor: i.product.flavor,
             retailPrice: i.product.retailPrice,
             quantity: i.quantity,
           })),
-          total: totalPrice,
+          total: lines.reduce((sum, i) => sum + i.product.retailPrice * i.quantity, 0),
         }),
       )
 
@@ -157,6 +200,7 @@ export default function CheckoutPage() {
     comment,
     items,
     totalPrice,
+    syncWithCatalog,
     locations,
     clearCart,
     resetBooking,

@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/lib/mock-data'
 import { useCart } from '@/lib/context/cart-context'
 import { useBooking } from '@/lib/context/booking-context'
+import { useCatalog } from '@/lib/api/hooks/useCatalog'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { CartItem, EmptyCart } from '@/components/cart/CartItem'
@@ -14,8 +16,15 @@ import { PickupLocationSelector } from '@/components/checkout/PickupLocationSele
 import { PageContainer } from '@/components/layout/PageContainer'
 
 export default function CartPage() {
-  const { items, totalItems, totalPrice, clearCart } = useCart()
+  const { items, totalItems, totalPrice, clearCart, syncWithCatalog } = useCart()
   const { isPickupSelected } = useBooking()
+  const { products } = useCatalog({}, { refreshInterval: 5_000 })
+
+  useEffect(() => {
+    if (products.length > 0) {
+      syncWithCatalog(products)
+    }
+  }, [products, syncWithCatalog])
 
   if (items.length === 0) {
     return (
