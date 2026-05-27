@@ -5,6 +5,7 @@ import { In } from 'typeorm'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
 import type { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
+import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
 import { enqueueNotification } from '@/src/lib/notifier'
 
 const UpdateSchema = z.object({
@@ -48,6 +49,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const previousStatus = booking.status
       const newStatus = u.status as WebBookingStatus
 
+      if (previousStatus === newStatus) {
+        continue
+      }
+
+      if (newStatus === 'cancelled') {
+        await cancelWebBooking(booking, u.reason ?? null, { cancelledBy: 'admin' })
+        if (u.appReservationId !== undefined) {
+          await repo.update(booking.id, {
+            appReservationId: u.appReservationId,
+            syncedToAppAt: new Date(),
+          })
+        }
+        updated++
+        continue
+      }
+
       const updateData: Partial<WebBooking> = { status: newStatus }
       if (u.appReservationId !== undefined) {
         updateData.appReservationId = u.appReservationId
@@ -57,15 +74,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       await repo.update(booking.id, updateData)
       updated++
 
-      if (previousStatus !== newStatus) {
-        if (newStatus === 'confirmed' || newStatus === 'cancelled' || newStatus === 'completed') {
-          statusChanges.push({
-            bookingId: booking.id,
-            newStatus,
-            previousStatus,
-            reason: u.reason ?? null,
-          })
-        }
+      if (newStatus === 'confirmed' || newStatus === 'completed') {
+        statusChanges.push({
+          bookingId: booking.id,
+          newStatus,
+          previousStatus,
+          reason: u.reason ?? null,
+        })
       }
     }
 
@@ -137,20 +152,6 @@ async function dispatchUserbotEvents(
         await enqueueNotification(endpoint, payload)
       } catch (err) {
         console.error('[reservations/status] enqueue confirmed failed', err)
-      }
-    } else if (change.newStatus === 'cancelled') {
-      const endpoint = joinEndpoint(userbotBase, '/events/booking-cancelled')
-      const payload = {
-        type: 'booking_cancelled',
-        bookingId: booking.id,
-        publicNumber: booking.publicNumber,
-        customerTelegram: booking.customerTelegram,
-        reason: change.reason,
-      }
-      try {
-        await enqueueNotification(endpoint, payload)
-      } catch (err) {
-        console.error('[reservations/status] enqueue cancelled failed', err)
       }
     } else if (change.newStatus === 'completed') {
       const endpoint = joinEndpoint(userbotBase, '/events/sale-completed')

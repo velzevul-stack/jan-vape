@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
+import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
 import { getRepo } from '@/src/lib/db'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
 
@@ -25,11 +26,16 @@ export async function PATCH(
   const booking = await repo.findOne({ where: { id } })
   if (!booking) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await repo.update(booking.id, { status: parsed.data.status as WebBookingStatus })
+  const newStatus = parsed.data.status as WebBookingStatus
 
-  revalidatePath('/admin')
-  revalidatePath('/admin/bookings')
-  revalidatePath('/')
+  if (newStatus === 'cancelled' && booking.status !== 'cancelled') {
+    await cancelWebBooking(booking, null, { cancelledBy: 'admin' })
+  } else if (newStatus !== booking.status) {
+    await repo.update(booking.id, { status: newStatus })
+    revalidatePath('/admin')
+    revalidatePath('/admin/bookings')
+    revalidatePath('/')
+  }
 
-  return NextResponse.json({ ok: true, status: parsed.data.status })
+  return NextResponse.json({ ok: true, status: newStatus })
 }

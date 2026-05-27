@@ -31,6 +31,13 @@ export async function cancelWebBooking(
 
   const cancelledBy = options?.cancelledBy ?? 'admin'
   const notifyCustomer = options?.notifyCustomer ?? true
+  const customerReason =
+    reason ??
+    (cancelledBy === 'admin'
+      ? 'Отменено менеджером'
+      : cancelledBy === 'customer'
+        ? 'Отменено клиентом в Telegram'
+        : null)
   const userbotBase = process.env.NOTIFY_USERBOT_URL
   if (userbotBase && notifyCustomer) {
     const endpoint = joinEndpoint(userbotBase, '/events/booking-cancelled')
@@ -39,7 +46,7 @@ export async function cancelWebBooking(
       bookingId: booking.id,
       publicNumber: booking.publicNumber,
       customerTelegram: booking.customerTelegram,
-      reason,
+      reason: customerReason,
     }
     try {
       await enqueueNotification(endpoint, payload)
