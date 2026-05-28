@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { consumeVerificationToken } from '@/src/lib/verificationToken'
 import { signTgSession, tgSessionCookieName } from '@/src/lib/tgSession'
+import { resolvePublicSiteUrl } from '@/src/lib/siteUrl'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ token: string }> },
 ): Promise<NextResponse> {
   const { token } = await context.params
+  const siteBase = resolvePublicSiteUrl(req)
   const verified = await consumeVerificationToken(token)
   if (!verified) {
-    return NextResponse.redirect(new URL('/?verify=expired', _req.url))
+    return NextResponse.redirect(new URL('/?verify=expired', siteBase))
   }
 
   const cookieValue = signTgSession({
@@ -17,7 +19,7 @@ export async function GET(
     telegramUserId: verified.telegramUserId,
   })
 
-  const response = NextResponse.redirect(new URL('/?verified=1', _req.url))
+  const response = NextResponse.redirect(new URL('/?verified=1', siteBase))
   response.cookies.set(tgSessionCookieName(), cookieValue, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

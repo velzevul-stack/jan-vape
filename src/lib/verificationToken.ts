@@ -3,12 +3,10 @@ import { normalizeTelegramUsername } from '@/lib/telegram'
 import { getRepo } from './db'
 import { ensureTelegramCustomer } from './telegramCustomer'
 import { telegramLookupKey } from './telegramBooking'
+import { getPublicSiteUrl } from './siteUrl'
 
 const TOKEN_TTL_MINUTES = 45
-
-function siteBaseUrl(): string {
-  return (process.env.SITE_PUBLIC_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(/\/+$/, '')
-}
+const TOKEN_BYTES = 9
 
 export async function createVerificationToken(input: {
   customerTelegram: string
@@ -17,7 +15,7 @@ export async function createVerificationToken(input: {
   const normalized = normalizeTelegramUsername(input.customerTelegram)
   const lookupKey = telegramLookupKey(normalized)
   const repo = await getRepo('VerificationToken')
-  const token = randomBytes(24).toString('base64url')
+  const token = randomBytes(TOKEN_BYTES).toString('base64url')
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000)
 
   await repo.save(
@@ -33,7 +31,7 @@ export async function createVerificationToken(input: {
     }),
   )
 
-  const base = siteBaseUrl()
+  const base = getPublicSiteUrl()
   const url = base ? `${base}/v/${token}` : `/v/${token}`
   return { token, url, expiresAt }
 }
