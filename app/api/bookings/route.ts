@@ -10,8 +10,9 @@ import {
   getCustomerStatsForTelegram,
   trustLevelLabel,
 } from '@/src/lib/customerStats'
-import { ensureTelegramCustomer } from '@/src/lib/telegramCustomer'
-import { tgSessionCookieName, telegramMatchesSession, verifyTgSession } from '@/src/lib/tgSession'
+import { ensureTelegramCustomer, isTelegramCustomerBlocked } from '@/src/lib/telegramCustomer'
+import { tgSessionCookieName, telegramFromSession, verifyTgSession } from '@/src/lib/tgSession'
+import { normalizeTelegramUsername } from '@/lib/telegram'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
@@ -74,11 +75,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const data = parsed.data
   const scheduledAt = new Date(data.scheduledAt)
   const tgSession = verifyTgSession(req.cookies.get(tgSessionCookieName())?.value)
-  if (tgSession && !telegramMatchesSession(tgSession, data.customerTelegram)) {
-    return NextResponse.json(
-      { error: 'Telegram username does not match verified session' },
-      { status: 422 },
-    )
+  let customerTelegram = normalizeTelegramUsername(data.customerTelegram)
+  if (tgSession) {
+    customerTelegram = telegramFromSession(tgSession)
+  }
+
+  if (await isTelegramCustomerBlocked(customerTelegram)) {
+    return NextResponse.json({ error: 'Booking is not available for this account' }, { status: 403 })
   }
 
   const ds = await getDataSource()
@@ -144,7 +147,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       publicNumber: generatePublicNumber(),
       source: 'web',
       customerName: data.customerName,
-      customerTelegram: data.customerTelegram,
+      customerTelegram,
       comment: data.comment ?? null,
       scheduledAt,
       locationId,
@@ -156,7 +159,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     await bookingRepo.save(booking)
     const customer = await ensureTelegramCustomer(booking.customerTelegram)
-    if (tgSession && telegramMatchesSession(tgSession, booking.customerTelegram)) {
+    if (tgSession) {
       const customerRepo = txn.getRepository(entityTableNames.TelegramCustomer)
       await customerRepo.update(customer.id, {
         verifiedAt: customer.verifiedAt ?? new Date(),

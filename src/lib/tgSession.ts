@@ -60,6 +60,11 @@ export function verifyTgSession(raw: string | undefined | null): TgSessionPayloa
   }
 }
 
+export function telegramFromSession(session: TgSessionPayload): string {
+  const raw = session.u.startsWith('@') ? session.u : `@${session.u}`
+  return normalizeTelegramUsername(raw)
+}
+
 export function telegramMatchesSession(
   session: TgSessionPayload,
   customerTelegram: string,

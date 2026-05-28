@@ -18,3 +18,10 @@ export async function ensureTelegramCustomer(
   const created = repo.create({ telegramUsername: lookupKey })
   return repo.save(created)
 }
+
+export async function isTelegramCustomerBlocked(customerTelegram: string): Promise<boolean> {
+  const lookupKey = telegramLookupKey(normalizeTelegramUsername(customerTelegram))
+  const repo = await getRepo('TelegramCustomer')
+  const existing = await repo.findOne({ where: { telegramUsername: lookupKey } })
+  return Boolean(existing?.blockedAt)
+}
