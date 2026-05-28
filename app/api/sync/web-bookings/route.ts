@@ -3,29 +3,38 @@ import { verifySyncAuth } from '@/src/lib/auth'
 import { getCustomerStatsMap } from '@/src/lib/customerStats'
 import { getRepo } from '@/src/lib/db'
 import { telegramLookupKey } from '@/src/lib/telegramBooking'
-import { WebBooking } from '@/src/entities/WebBooking'
-import { In, MoreThanOrEqual } from 'typeorm'
+import { In, MoreThan } from 'typeorm'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!verifySyncAuth(req, '')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const sinceMs = parseInt(req.nextUrl.searchParams.get('since') ?? '0', 10)
+  const pendingOnly = req.nextUrl.searchParams.get('pending') === '1'
   const limit = Math.min(
     parseInt(req.nextUrl.searchParams.get('limit') ?? '100', 10),
     500,
   )
 
   const repo = await getRepo('WebBooking')
-  const since = new Date(sinceMs || 0)
 
-  const bookings = await repo.find({
-    where: { updatedAt: MoreThanOrEqual(since) },
-    relations: { location: true, customAddress: true },
-    order: { updatedAt: 'ASC' },
-    take: limit,
-  })
+  const bookings = pendingOnly
+    ? await repo.find({
+        where: { status: 'pending' },
+        relations: { location: true, customAddress: true },
+        order: { createdAt: 'DESC' },
+        take: limit,
+      })
+    : await (async () => {
+        const sinceMs = parseInt(req.nextUrl.searchParams.get('since') ?? '0', 10)
+        const since = new Date(sinceMs || 0)
+        return repo.find({
+          where: { updatedAt: MoreThan(since) },
+          relations: { location: true, customAddress: true },
+          order: { updatedAt: 'ASC' },
+          take: limit,
+        })
+      })()
 
   const snapshotIds = Array.from(
     new Set(bookings.flatMap((b) => b.items.map((item) => item.productId))),
@@ -35,9 +44,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     snapshotIds.length > 0
       ? await productRepo.find({ where: { id: In(snapshotIds) } })
       : []
-  const externalIdBySnapshotId = new Map(
-    snapshots.map((p) => [p.id, p.externalId] as const),
-  )
+  const snapshotById = new Map(snapshots.map((p) => [p.id, p]))
 
   const statsByTelegram = await getCustomerStatsMap(
     bookings.map((booking) => booking.customerTelegram),
@@ -60,10 +67,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       locationAddress: b.location?.address ?? null,
       customAddressId: b.customAddressId,
       customAddressLabel: b.customAddress?.label ?? null,
-      items: b.items.map((item) => ({
-        ...item,
-        externalId: externalIdBySnapshotId.get(item.productId) ?? null,
-      })),
+      items: b.items.map((item) => {
+        const product = snapshotById.get(item.productId)
+        return {
+          ...item,
+          externalId: product?.externalId ?? null,
+          brand: product?.brand ?? '',
+          flavor: product?.flavor ?? '',
+        }
+      }),
       totalAmount: Number(b.totalAmount),
       status: b.status,
       appReservationId: b.appReservationId,

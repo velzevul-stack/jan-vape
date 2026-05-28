@@ -24,6 +24,7 @@ export function ContactForm() {
 
   const hydratedRef = useRef(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
+  const [telegramVerified, setTelegramVerified] = useState(false)
 
   useEffect(() => {
     if (hydratedRef.current) return
@@ -33,6 +34,23 @@ export function ContactForm() {
     if (!customerTelegram && stored.telegram) setCustomerTelegram(stored.telegram)
     setProfileLoaded(true)
   }, [customerName, customerTelegram, setCustomerName, setCustomerTelegram])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/tg/session')
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.verified) return
+        const tg = typeof data.customerTelegram === 'string' ? data.customerTelegram : ''
+        if (!tg) return
+        setCustomerTelegram(normalizeTelegramUsername(tg))
+        setTelegramVerified(true)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [setCustomerTelegram])
 
   useEffect(() => {
     if (!profileLoaded) return
@@ -112,9 +130,16 @@ export function ContactForm() {
             onChange={handleTelegramChange}
             onBlur={handleTelegramBlur}
             placeholder="@username"
-            className={inputClasses}
+            readOnly={telegramVerified}
+            className={cn(inputClasses, telegramVerified && 'opacity-80')}
           />
         </Field>
+
+        {telegramVerified && (
+          <p className="text-xs text-status-success">
+            Telegram подтверждён — username подставлен автоматически
+          </p>
+        )}
 
         <div>
           <label

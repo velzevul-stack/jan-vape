@@ -11,6 +11,7 @@ import { IdempotencyKey } from '../entities/IdempotencyKey'
 import { NotificationOutbox } from '../entities/NotificationOutbox'
 import { AppAlert } from '../entities/AppAlert'
 import { TelegramCustomer } from '../entities/TelegramCustomer'
+import { VerificationToken } from '../entities/VerificationToken'
 
 export const entityRegistry = {
   ProductSnapshot,
@@ -24,6 +25,7 @@ export const entityRegistry = {
   NotificationOutbox,
   AppAlert,
   TelegramCustomer,
+  VerificationToken,
 } as const
 
 export const entityTableNames = {
@@ -38,6 +40,7 @@ export const entityTableNames = {
   NotificationOutbox: 'notification_outbox',
   AppAlert: 'app_alerts',
   TelegramCustomer: 'telegram_customers',
+  VerificationToken: 'verification_tokens',
 } as const
 
 export type EntityKey = keyof typeof entityRegistry

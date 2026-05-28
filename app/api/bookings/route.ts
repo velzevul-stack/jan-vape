@@ -11,6 +11,7 @@ import {
   trustLevelLabel,
 } from '@/src/lib/customerStats'
 import { ensureTelegramCustomer } from '@/src/lib/telegramCustomer'
+import { tgSessionCookieName, telegramMatchesSession, verifyTgSession } from '@/src/lib/tgSession'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
@@ -72,6 +73,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const data = parsed.data
   const scheduledAt = new Date(data.scheduledAt)
+  const tgSession = verifyTgSession(req.cookies.get(tgSessionCookieName())?.value)
+  if (tgSession && !telegramMatchesSession(tgSession, data.customerTelegram)) {
+    return NextResponse.json(
+      { error: 'Telegram username does not match verified session' },
+      { status: 422 },
+    )
+  }
 
   const ds = await getDataSource()
 
@@ -147,7 +155,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
 
     await bookingRepo.save(booking)
-    await ensureTelegramCustomer(booking.customerTelegram)
+    const customer = await ensureTelegramCustomer(booking.customerTelegram)
+    if (tgSession && telegramMatchesSession(tgSession, booking.customerTelegram)) {
+      const customerRepo = txn.getRepository(entityTableNames.TelegramCustomer)
+      await customerRepo.update(customer.id, {
+        verifiedAt: customer.verifiedAt ?? new Date(),
+        telegramId: tgSession.id ?? customer.telegramId,
+      })
+    }
 
     saved = {
       bookingId: booking.id,
