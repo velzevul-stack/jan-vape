@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS "telegram_customers" (
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_telegram_customers_username"
-  ON "telegram_customers" (LOWER("telegramUsername"));
+CREATE UNIQUE INDEX IF NOT EXISTS "UQ_telegram_customers_username"
+  ON "telegram_customers" ("telegramUsername");
 
 ALTER TABLE "web_bookings"
   ADD COLUMN IF NOT EXISTS "cancelledFromStatus" varchar(20);
