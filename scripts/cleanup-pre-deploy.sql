@@ -6,6 +6,7 @@ DELETE FROM "web_bookings"
 WHERE "status" = 'cancelled';
 
 DELETE FROM "notification_outbox"
-WHERE "status" IN ('sent', 'failed');
+WHERE "deliveredAt" IS NOT NULL
+   OR "attempts" >= 5;
 
 COMMIT;
