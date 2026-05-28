@@ -25,7 +25,9 @@ export async function cancelWebBooking(
 ): Promise<WebBooking> {
   const repo = await getRepo('WebBooking')
 
-  if (booking.status !== 'cancelled') {
+  const wasCancelled = booking.status === 'cancelled'
+
+  if (!wasCancelled) {
     const cancelledFromStatus = resolveCancelledFromStatus(booking.status)
     await repo.update(booking.id, { status: 'cancelled', cancelledFromStatus })
     booking.status = 'cancelled'
@@ -42,7 +44,7 @@ export async function cancelWebBooking(
         ? 'Отменено клиентом в Telegram'
         : null)
   const userbotBase = process.env.NOTIFY_USERBOT_URL
-  if (userbotBase && notifyCustomer) {
+  if (userbotBase && notifyCustomer && !wasCancelled) {
     const endpoint = joinEndpoint(userbotBase, '/events/booking-cancelled')
     const payload = {
       type: 'booking_cancelled',

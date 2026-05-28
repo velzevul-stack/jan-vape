@@ -25,13 +25,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       )
     }
 
-    if (booking.status !== 'confirmed') {
+    const shouldNotify = booking.status !== 'confirmed'
+
+    if (shouldNotify) {
       await repo.update(booking.id, { status: 'confirmed' })
       booking.status = 'confirmed'
     }
 
     const userbotBase = process.env.NOTIFY_USERBOT_URL
-    if (userbotBase) {
+    if (userbotBase && shouldNotify) {
       const productRepo = await getRepo('ProductSnapshot')
       const productIds = Array.from(new Set(booking.items.map((i) => i.productId)))
       const products =
