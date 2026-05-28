@@ -210,3 +210,106 @@ export function formatCustomerWarnings(stats: CustomerStats): string[] {
 }
 
 export type { TelegramCustomer }
+
+export interface CustomerListItem {
+  id: string
+  telegramUsername: string
+  verified: boolean
+  trusted: boolean
+  blocked: boolean
+  blockedReason: string | null
+  stats: CustomerStats
+}
+
+export async function listCustomers(options: {
+  limit?: number
+  offset?: number
+  search?: string | null
+}): Promise<{ customers: CustomerListItem[]; total: number }> {
+  const limit = Math.min(Math.max(options.limit ?? 10, 1), 50)
+  const offset = Math.max(options.offset ?? 0, 0)
+  const search = options.search?.trim().toLowerCase() ?? ''
+
+  const customerRepo = await getRepo('TelegramCustomer')
+  const qb = customerRepo.createQueryBuilder('tc')
+
+  if (search) {
+    qb.where('LOWER(tc.telegramUsername) LIKE :search', { search: `%${search}%` })
+  }
+
+  const total = await qb.getCount()
+  const rows = await qb
+    .orderBy('tc.updatedAt', 'DESC')
+    .skip(offset)
+    .take(limit)
+    .getMany()
+
+  if (rows.length === 0) {
+    return { customers: [], total }
+  }
+
+  const lookupKeys = rows.map((row) => row.telegramUsername)
+  const bookingRepo = await getRepo('WebBooking')
+  const bookings = await bookingRepo
+    .createQueryBuilder('wb')
+    .where('LOWER(wb.customerTelegram) IN (:...keys)', { keys: lookupKeys })
+    .orderBy('wb.createdAt', 'ASC')
+    .getMany()
+
+  const bookingsByTelegram = new Map<string, typeof bookings>()
+  for (const booking of bookings) {
+    const key = telegramLookupKey(booking.customerTelegram)
+    const bucket = bookingsByTelegram.get(key) ?? []
+    bucket.push(booking)
+    bookingsByTelegram.set(key, bucket)
+  }
+
+  const customers = rows.map((row) => {
+    const history = computeBookingHistoryStats(bookingsByTelegram.get(row.telegramUsername) ?? [])
+    const warnings: string[] = []
+    if (!row.verifiedAt) warnings.push('tg_unverified')
+    if (row.blockedAt) warnings.push('blocked')
+
+    const stats: CustomerStats = {
+      telegramUsername: normalizeTelegramUsername(row.telegramUsername),
+      trustLevel: history.trustLevel,
+      completedCount: history.completedCount,
+      lateCancelCount: history.lateCancelCount,
+      earlyCancelCount: history.earlyCancelCount,
+      consecutiveCompleted: history.consecutiveCompleted,
+      verified: Boolean(row.verifiedAt),
+      trusted: Boolean(row.trustedAt) || history.completedCount > 0,
+      blocked: Boolean(row.blockedAt),
+      warnings,
+    }
+
+    return {
+      id: row.id,
+      telegramUsername: stats.telegramUsername,
+      verified: stats.verified,
+      trusted: stats.trusted,
+      blocked: stats.blocked,
+      blockedReason: row.blockedReason,
+      stats,
+    }
+  })
+
+  return { customers, total }
+}
+
+export async function getCustomerById(customerId: string): Promise<CustomerListItem | null> {
+  const customerRepo = await getRepo('TelegramCustomer')
+  const row = await customerRepo.findOne({ where: { id: customerId } })
+  if (!row) return null
+
+  const stats = await getCustomerStatsForTelegram(row.telegramUsername)
+  return {
+    id: row.id,
+    telegramUsername: stats.telegramUsername,
+    verified: stats.verified,
+    trusted: stats.trusted,
+    blocked: stats.blocked,
+    blockedReason: row.blockedReason,
+    stats,
+  }
+}
