@@ -3,6 +3,7 @@ import type { WebBooking } from '@/src/entities/WebBooking'
 import { getRepo } from './db'
 import { enqueueNotification } from './notifier'
 import { enqueueAppAlert } from './appAlerts'
+import { resolveCancelledFromStatus } from './customerStats'
 
 function joinEndpoint(base: string, path: string): string {
   if (!base) return path
@@ -25,8 +26,10 @@ export async function cancelWebBooking(
   const repo = await getRepo('WebBooking')
 
   if (booking.status !== 'cancelled') {
-    await repo.update(booking.id, { status: 'cancelled' })
+    const cancelledFromStatus = resolveCancelledFromStatus(booking.status)
+    await repo.update(booking.id, { status: 'cancelled', cancelledFromStatus })
     booking.status = 'cancelled'
+    booking.cancelledFromStatus = cancelledFromStatus
   }
 
   const cancelledBy = options?.cancelledBy ?? 'admin'

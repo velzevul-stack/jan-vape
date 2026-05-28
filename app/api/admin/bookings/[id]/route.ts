@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
+import { markCustomerTrusted } from '@/src/lib/customerStats'
 import { getRepo } from '@/src/lib/db'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
 
@@ -32,6 +33,13 @@ export async function PATCH(
     await cancelWebBooking(booking, null, { cancelledBy: 'admin' })
   } else if (newStatus !== booking.status) {
     await repo.update(booking.id, { status: newStatus })
+    if (newStatus === 'completed') {
+      try {
+        await markCustomerTrusted(booking.customerTelegram)
+      } catch (err) {
+        console.error('[admin/bookings PATCH] markCustomerTrusted failed', err)
+      }
+    }
     revalidatePath('/admin')
     revalidatePath('/admin/bookings')
     revalidatePath('/')

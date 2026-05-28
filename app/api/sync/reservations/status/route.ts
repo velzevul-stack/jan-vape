@@ -6,6 +6,7 @@ import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
 import type { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
 import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
+import { markCustomerTrusted } from '@/src/lib/customerStats'
 import { enqueueNotification } from '@/src/lib/notifier'
 
 const UpdateSchema = z.object({
@@ -73,6 +74,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       await repo.update(booking.id, updateData)
       updated++
+
+      if (newStatus === 'completed') {
+        try {
+          await markCustomerTrusted(booking.customerTelegram)
+        } catch (err) {
+          console.error('[reservations/status] markCustomerTrusted failed', err)
+        }
+      }
 
       if (newStatus === 'confirmed' || newStatus === 'completed') {
         statusChanges.push({

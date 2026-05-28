@@ -6,6 +6,11 @@ import { In } from 'typeorm'
 import { entityTableNames, getDataSource } from '@/src/lib/db'
 import { findBookingStockIssues } from '@/src/lib/availability'
 import { enqueueNotification } from '@/src/lib/notifier'
+import {
+  getCustomerStatsForTelegram,
+  trustLevelLabel,
+} from '@/src/lib/customerStats'
+import { ensureTelegramCustomer } from '@/src/lib/telegramCustomer'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
@@ -142,6 +147,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
 
     await bookingRepo.save(booking)
+    await ensureTelegramCustomer(booking.customerTelegram)
 
     saved = {
       bookingId: booking.id,
@@ -176,6 +182,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const adminEventsBase = process.env.NOTIFY_ADMIN_BOT_URL
   if (adminEventsBase) {
+    const customerStats = await getCustomerStatsForTelegram(savedBooking.customerTelegram)
     const endpoint = joinEndpoint(adminEventsBase, '/events/booking-created')
     const payload = {
       type: 'booking_created',
@@ -183,6 +190,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       publicNumber: savedBooking.publicNumber,
       customerName: savedBooking.customerName,
       customerTelegram: savedBooking.customerTelegram,
+      customerTrustLevel: customerStats.trustLevel,
+      customerTrustLabel: trustLevelLabel(customerStats.trustLevel),
+      customerWarnings: customerStats.warnings,
       scheduledAt: savedBooking.scheduledAt,
       location: savedBooking.locationLabel,
       customAddress: savedBooking.customAddressLabel,

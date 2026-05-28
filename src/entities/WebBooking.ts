@@ -14,6 +14,7 @@ import { CustomAddress } from './CustomAddress'
 
 export type WebBookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
 export type WebBookingSource = 'web' | 'app'
+export type CancelledFromStatus = 'pending' | 'confirmed'
 
 @Entity('web_bookings')
 export class WebBooking {
@@ -65,6 +66,9 @@ export class WebBooking {
 
   @Column({ type: 'varchar', length: 20, default: 'pending' })
   status!: WebBookingStatus
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  cancelledFromStatus!: CancelledFromStatus | null
 
   @Column({ type: 'int', nullable: true })
   appReservationId!: number | null

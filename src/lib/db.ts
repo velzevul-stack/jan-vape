@@ -10,6 +10,7 @@ import { SyncCursor } from '../entities/SyncCursor'
 import { IdempotencyKey } from '../entities/IdempotencyKey'
 import { NotificationOutbox } from '../entities/NotificationOutbox'
 import { AppAlert } from '../entities/AppAlert'
+import { TelegramCustomer } from '../entities/TelegramCustomer'
 
 export const entityRegistry = {
   ProductSnapshot,
@@ -22,6 +23,7 @@ export const entityRegistry = {
   IdempotencyKey,
   NotificationOutbox,
   AppAlert,
+  TelegramCustomer,
 } as const
 
 export const entityTableNames = {
@@ -35,6 +37,7 @@ export const entityTableNames = {
   IdempotencyKey: 'idempotency_keys',
   NotificationOutbox: 'notification_outbox',
   AppAlert: 'app_alerts',
+  TelegramCustomer: 'telegram_customers',
 } as const
 
 export type EntityKey = keyof typeof entityRegistry
