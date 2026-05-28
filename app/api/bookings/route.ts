@@ -12,6 +12,8 @@ import {
 } from '@/src/lib/customerStats'
 import { ensureTelegramCustomer, isTelegramCustomerBlocked } from '@/src/lib/telegramCustomer'
 import { tgSessionCookieName, telegramFromSession, verifyTgSession } from '@/src/lib/tgSession'
+import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/src/lib/unverifiedLimits'
+import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 
 const BookingSchema = z.object({
@@ -82,6 +84,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (await isTelegramCustomerBlocked(customerTelegram)) {
     return NextResponse.json({ error: 'Booking is not available for this account' }, { status: 403 })
+  }
+
+  const totalQuantity = data.items.reduce((sum, item) => sum + item.quantity, 0)
+  const verified = await isTelegramVerified(customerTelegram, req)
+  const cartCheck = assertUnverifiedCartQuantity(totalQuantity, verified)
+  if (!cartCheck.ok) {
+    return NextResponse.json({ error: cartCheck.message, code: 'unverified_cart_limit' }, { status: 422 })
+  }
+
+  const bookingCheck = await assertUnverifiedBookingAllowed(customerTelegram, req)
+  if (!bookingCheck.ok) {
+    return NextResponse.json({ error: bookingCheck.message, code: 'unverified_booking_limit' }, { status: 422 })
   }
 
   const ds = await getDataSource()

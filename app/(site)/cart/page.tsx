@@ -16,7 +16,7 @@ import { PickupLocationSelector } from '@/components/checkout/PickupLocationSele
 import { PageContainer } from '@/components/layout/PageContainer'
 
 export default function CartPage() {
-  const { items, totalItems, totalPrice, clearCart, syncWithCatalog } = useCart()
+  const { items, totalItems, totalPrice, clearCart, syncWithCatalog, cartLimitMessage } = useCart()
   const { isPickupSelected } = useBooking()
   const { products } = useCatalog({}, { refreshInterval: 5_000 })
 
@@ -51,6 +51,12 @@ export default function CartPage() {
             <ArrowLeft className="h-4 w-4" />
             <span>Назад в каталог</span>
           </Link>
+
+          {cartLimitMessage && (
+            <div className="mb-4 rounded-2xl border border-accent-warning/40 bg-accent-warning/10 px-4 py-3 text-sm text-accent-warning">
+              {cartLimitMessage}
+            </div>
+          )}
 
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>

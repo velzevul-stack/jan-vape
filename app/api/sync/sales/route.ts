@@ -7,6 +7,9 @@ import { WebSale } from '@/src/entities/WebSale'
 import { CustomAddress } from '@/src/entities/CustomAddress'
 import { PickupLocation } from '@/src/entities/PickupLocation'
 import { normalizeAddress } from '@/src/lib/normalize'
+import { parseTelegramFromText } from '@/src/lib/parseTelegramFromText'
+import { normalizeTelegramUsername } from '@/lib/telegram'
+import { ensureTelegramCustomer } from '@/src/lib/telegramCustomer'
 
 const PROMOTE_THRESHOLD = 10
 
@@ -17,6 +20,8 @@ const SaleSchema = z.object({
   revenue: z.number().min(0),
   place: z.string().max(500).optional(),
   saleDate: z.number().int(),
+  customerTelegram: z.string().min(2).max(255).optional(),
+  customerName: z.string().max(255).optional(),
 })
 
 const BodySchema = z.object({
@@ -88,6 +93,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         }
 
+        const customerTelegram =
+          (s.customerTelegram ? normalizeTelegramUsername(s.customerTelegram) : null) ??
+          parseTelegramFromText(s.customerName)
+
+        if (customerTelegram) {
+          await ensureTelegramCustomer(customerTelegram)
+        }
+
         await saleRepo.save(
           saleRepo.create({
             externalSaleId: s.externalSaleId,
@@ -97,6 +110,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             locationId,
             customAddressId,
             saleDate: new Date(s.saleDate),
+            customerTelegram,
           }),
         )
         saved++

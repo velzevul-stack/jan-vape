@@ -46,6 +46,10 @@ export class WebSale {
   @Column({ type: 'timestamptz' })
   saleDate!: Date
 
+  @Index()
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  customerTelegram!: string | null
+
   @CreateDateColumn({ type: 'timestamptz' })
   syncedAt!: Date
 }

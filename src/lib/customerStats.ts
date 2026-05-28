@@ -5,6 +5,16 @@ import { getRepo } from './db'
 import { telegramLookupKey } from './telegramBooking'
 import { ensureTelegramCustomer } from './telegramCustomer'
 
+async function countCompletedSalesForTelegram(lookupKey: string): Promise<number> {
+  const saleRepo = await getRepo('WebSale')
+  const raw = await saleRepo
+    .createQueryBuilder('ws')
+    .select('COALESCE(SUM(ws.quantity), 0)', 'total')
+    .where('LOWER(ws.customerTelegram) = :tg', { tg: lookupKey })
+    .getRawOne<{ total: string }>()
+  return Number(raw?.total ?? 0)
+}
+
 export type TrustLevel = 'blue' | 'red' | 'orange' | 'green'
 
 export interface CustomerStats {
@@ -122,6 +132,13 @@ export async function getCustomerStatsForTelegram(
   })
 
   const history = computeBookingHistoryStats(bookings)
+  const salesCompletedCount = await countCompletedSalesForTelegram(lookupKey)
+  const completedCount = history.completedCount + salesCompletedCount
+  const trustLevel = computeTrustLevel({
+    completedCount,
+    lateCancelCount: history.lateCancelCount,
+    consecutiveCompleted: history.consecutiveCompleted,
+  })
   const warnings: string[] = []
 
   if (!customer?.verifiedAt) {
@@ -133,13 +150,13 @@ export async function getCustomerStatsForTelegram(
 
   return {
     telegramUsername: normalized,
-    trustLevel: history.trustLevel,
-    completedCount: history.completedCount,
+    trustLevel,
+    completedCount,
     lateCancelCount: history.lateCancelCount,
     earlyCancelCount: history.earlyCancelCount,
     consecutiveCompleted: history.consecutiveCompleted,
     verified: Boolean(customer?.verifiedAt),
-    trusted: Boolean(customer?.trustedAt) || history.completedCount > 0,
+    trusted: Boolean(customer?.trustedAt) || completedCount > 0,
     blocked: Boolean(customer?.blockedAt),
     warnings,
   }
@@ -264,21 +281,41 @@ export async function listCustomers(options: {
     bookingsByTelegram.set(key, bucket)
   }
 
+  const saleRepo = await getRepo('WebSale')
+  const salesRows =
+    lookupKeys.length > 0
+      ? await saleRepo
+          .createQueryBuilder('ws')
+          .select('LOWER(ws.customerTelegram)', 'telegram')
+          .addSelect('COALESCE(SUM(ws.quantity), 0)', 'total')
+          .where('LOWER(ws.customerTelegram) IN (:...keys)', { keys: lookupKeys })
+          .groupBy('LOWER(ws.customerTelegram)')
+          .getRawMany<{ telegram: string; total: string }>()
+      : []
+  const salesByTelegram = new Map(salesRows.map((row) => [row.telegram, Number(row.total ?? 0)]))
+
   const customers = rows.map((row) => {
     const history = computeBookingHistoryStats(bookingsByTelegram.get(row.telegramUsername) ?? [])
+    const salesCompletedCount = salesByTelegram.get(row.telegramUsername) ?? 0
+    const completedCount = history.completedCount + salesCompletedCount
+    const trustLevel = computeTrustLevel({
+      completedCount,
+      lateCancelCount: history.lateCancelCount,
+      consecutiveCompleted: history.consecutiveCompleted,
+    })
     const warnings: string[] = []
     if (!row.verifiedAt) warnings.push('tg_unverified')
     if (row.blockedAt) warnings.push('blocked')
 
     const stats: CustomerStats = {
       telegramUsername: normalizeTelegramUsername(row.telegramUsername),
-      trustLevel: history.trustLevel,
-      completedCount: history.completedCount,
+      trustLevel,
+      completedCount,
       lateCancelCount: history.lateCancelCount,
       earlyCancelCount: history.earlyCancelCount,
       consecutiveCompleted: history.consecutiveCompleted,
       verified: Boolean(row.verifiedAt),
-      trusted: Boolean(row.trustedAt) || history.completedCount > 0,
+      trusted: Boolean(row.trustedAt) || completedCount > 0,
       blocked: Boolean(row.blockedAt),
       warnings,
     }
