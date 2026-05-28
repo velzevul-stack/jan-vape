@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MoreThanOrEqual } from 'typeorm'
+import { MoreThan } from 'typeorm'
 import { verifySyncAuth } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
 
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const repo = await getRepo('AppAlert')
   const alerts = await repo.find({
-    where: { createdAt: MoreThanOrEqual(since) },
+    where: { createdAt: MoreThan(since) },
     order: { createdAt: 'ASC' },
     take: limit,
   })
