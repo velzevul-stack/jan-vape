@@ -7,8 +7,8 @@ import { getRepo } from '@/src/lib/db'
 const SlotSchema = z.object({
   locationId: z.string().uuid().optional(),
   customAddressId: z.string().uuid().optional(),
-  startsAt: z.string().datetime(),
-  endsAt: z.string().datetime(),
+  startsAt: z.string().datetime({ offset: true }),
+  endsAt: z.string().datetime({ offset: true }),
   reason: z.string().max(500).optional(),
 })
 
