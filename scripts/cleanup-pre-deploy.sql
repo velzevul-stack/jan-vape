@@ -2,9 +2,14 @@ BEGIN;
 
 DELETE FROM "app_alerts";
 
-DELETE FROM "verification_tokens"
-WHERE "usedAt" IS NOT NULL
-   OR "expiresAt" < now();
+DO $$
+BEGIN
+  IF to_regclass('public.verification_tokens') IS NOT NULL THEN
+    DELETE FROM "verification_tokens"
+    WHERE "usedAt" IS NOT NULL
+       OR "expiresAt" < now();
+  END IF;
+END $$;
 
 DELETE FROM "web_bookings"
 WHERE "status" = 'cancelled';
