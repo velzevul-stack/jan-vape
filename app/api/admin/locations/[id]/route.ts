@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
+import { verifyBasicAuth, verifySyncAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
 import { PickupLocation } from '@/src/entities/PickupLocation'
 
@@ -21,12 +21,20 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const rawBody = await req.text()
+  const isBasic = verifyBasicAuth(req)
+  const isHmac = !isBasic && verifySyncAuth(req, rawBody)
+  if (!isBasic && !isHmac) return unauthorizedResponse()
   const { id } = await params
   const repo = await getRepo('PickupLocation')
   const loc = await repo.findOne({ where: { id } })
   if (!loc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const body = await req.json()
+  let body: unknown
+  try {
+    body = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const parsed = PatchSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
@@ -41,7 +49,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const isBasic = verifyBasicAuth(req)
+  const isHmac = !isBasic && verifySyncAuth(req, '')
+  if (!isBasic && !isHmac) return unauthorizedResponse()
   const { id } = await params
   const repo = await getRepo('PickupLocation')
   await repo.update(id, { isActive: false })

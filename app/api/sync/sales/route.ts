@@ -10,6 +10,7 @@ import { normalizeAddress } from '@/src/lib/normalize'
 import { parseTelegramFromText } from '@/src/lib/parseTelegramFromText'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { ensureTelegramCustomer } from '@/src/lib/telegramCustomer'
+import { webSalesSupportsCustomerTelegram } from '@/src/lib/webSalesSchema'
 
 const PROMOTE_THRESHOLD = 10
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const saleRepo = await getRepo('WebSale')
       const addrRepo = await getRepo('CustomAddress')
       const locRepo = await getRepo('PickupLocation')
+      const storeCustomerTelegram = await webSalesSupportsCustomerTelegram()
 
       let saved = 0
 
@@ -110,7 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             locationId,
             customAddressId,
             saleDate: new Date(s.saleDate),
-            customerTelegram,
+            ...(storeCustomerTelegram ? { customerTelegram } : {}),
           }),
         )
         saved++

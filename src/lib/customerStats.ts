@@ -2,10 +2,14 @@ import { normalizeTelegramUsername } from '@/lib/telegram'
 import type { CancelledFromStatus, WebBooking } from '@/src/entities/WebBooking'
 import type { TelegramCustomer } from '@/src/entities/TelegramCustomer'
 import { getRepo } from './db'
+import { webSalesSupportsCustomerTelegram } from './webSalesSchema'
 import { telegramLookupKey } from './telegramBooking'
 import { ensureTelegramCustomer } from './telegramCustomer'
 
 async function countCompletedSalesForTelegram(lookupKey: string): Promise<number> {
+  if (!(await webSalesSupportsCustomerTelegram())) {
+    return 0
+  }
   const saleRepo = await getRepo('WebSale')
   const raw = await saleRepo
     .createQueryBuilder('ws')
@@ -13,6 +17,23 @@ async function countCompletedSalesForTelegram(lookupKey: string): Promise<number
     .where('LOWER(ws.customerTelegram) = :tg', { tg: lookupKey })
     .getRawOne<{ total: string }>()
   return Number(raw?.total ?? 0)
+}
+
+async function salesCompletedCountByTelegram(
+  lookupKeys: string[],
+): Promise<Map<string, number>> {
+  if (lookupKeys.length === 0 || !(await webSalesSupportsCustomerTelegram())) {
+    return new Map()
+  }
+  const saleRepo = await getRepo('WebSale')
+  const salesRows = await saleRepo
+    .createQueryBuilder('ws')
+    .select('LOWER(ws.customerTelegram)', 'telegram')
+    .addSelect('COALESCE(SUM(ws.quantity), 0)', 'total')
+    .where('LOWER(ws.customerTelegram) IN (:...keys)', { keys: lookupKeys })
+    .groupBy('LOWER(ws.customerTelegram)')
+    .getRawMany<{ telegram: string; total: string }>()
+  return new Map(salesRows.map((row) => [row.telegram, Number(row.total ?? 0)]))
 }
 
 export type TrustLevel = 'blue' | 'red' | 'orange' | 'green'
@@ -281,18 +302,7 @@ export async function listCustomers(options: {
     bookingsByTelegram.set(key, bucket)
   }
 
-  const saleRepo = await getRepo('WebSale')
-  const salesRows =
-    lookupKeys.length > 0
-      ? await saleRepo
-          .createQueryBuilder('ws')
-          .select('LOWER(ws.customerTelegram)', 'telegram')
-          .addSelect('COALESCE(SUM(ws.quantity), 0)', 'total')
-          .where('LOWER(ws.customerTelegram) IN (:...keys)', { keys: lookupKeys })
-          .groupBy('LOWER(ws.customerTelegram)')
-          .getRawMany<{ telegram: string; total: string }>()
-      : []
-  const salesByTelegram = new Map(salesRows.map((row) => [row.telegram, Number(row.total ?? 0)]))
+  const salesByTelegram = await salesCompletedCountByTelegram(lookupKeys)
 
   const customers = rows.map((row) => {
     const history = computeBookingHistoryStats(bookingsByTelegram.get(row.telegramUsername) ?? [])

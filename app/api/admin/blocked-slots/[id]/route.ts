@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
+import { verifyBasicAuth, verifySyncAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const isBasic = verifyBasicAuth(req)
+  const isHmac = !isBasic && verifySyncAuth(req, '')
+  if (!isBasic && !isHmac) return unauthorizedResponse()
   const { id } = await params
   const repo = await getRepo('BlockedSlot')
   const slot = await repo.findOne({ where: { id } })

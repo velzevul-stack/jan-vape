@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { verifyBasicAuth, unauthorizedResponse } from '@/src/lib/auth'
+import { verifyBasicAuth, verifySyncAuth, unauthorizedResponse } from '@/src/lib/auth'
 import { getRepo } from '@/src/lib/db'
 import { PickupLocation } from '@/src/entities/PickupLocation'
 
@@ -19,15 +19,25 @@ const LocationSchema = z.object({
 })
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  if (!verifyBasicAuth(req)) return unauthorizedResponse()
+  const isBasic = verifyBasicAuth(req)
+  const isHmac = !isBasic && verifySyncAuth(req, '')
+  if (!isBasic && !isHmac) return unauthorizedResponse()
   const repo = await getRepo('PickupLocation')
   const locations = await repo.find({ order: { sortOrder: 'ASC' } })
   return NextResponse.json({ locations })
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  if (!verifyBasicAuth(req)) return unauthorizedResponse()
-  const body = await req.json()
+  const rawBody = await req.text()
+  const isBasic = verifyBasicAuth(req)
+  const isHmac = !isBasic && verifySyncAuth(req, rawBody)
+  if (!isBasic && !isHmac) return unauthorizedResponse()
+  let body: unknown
+  try {
+    body = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const parsed = LocationSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
