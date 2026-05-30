@@ -329,6 +329,11 @@ export function ProductGrid({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const visibleCategories = useMemo(
+    () => categoryOrder.filter((cat) => products.some((p) => p.category === cat)),
+    [products],
+  )
+
   const totalFilteredCount = filteredProducts.length
   const showTasteSection = filterRules.showTaste && availableTastes.length > 0
   const showStrengthSection = filterRules.showStrength && mgOptions.length > 0
@@ -418,20 +423,20 @@ export function ProductGrid({
           )}
         </div>
 
-        <div className="flex flex-nowrap gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {categoryOrder.map((cat) => {
-            const count = products.filter((p) => p.category === cat).length
-            if (count === 0) return null
-            return (
-              <CategoryTab
-                key={cat}
-                label={categoryLabels[cat]}
-                icon={categoryIcons[cat]}
-                active={activeCategory === cat && !activeBrand}
-                onClick={() => onSelectCategory(cat)}
-              />
-            )
-          })}
+        <div
+          className="flex rounded-xl border border-border-on-dark bg-card-inner p-1"
+          role="tablist"
+          aria-label="Категории"
+        >
+          {visibleCategories.map((cat) => (
+            <CategorySegment
+              key={cat}
+              label={categoryLabels[cat]}
+              icon={categoryIcons[cat]}
+              active={activeCategory === cat && !activeBrand}
+              onClick={() => onSelectCategory(cat)}
+            />
+          ))}
         </div>
       </div>
 
@@ -661,7 +666,7 @@ export function ProductGrid({
   )
 }
 
-function CategoryTab({
+function CategorySegment({
   label,
   icon,
   active,
@@ -675,18 +680,25 @@ function CategoryTab({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap transition-[border-color,background-color,transform] active:scale-[0.98]',
+        'flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-lg px-0.5 py-1.5 transition-colors sm:gap-1 sm:px-1 sm:py-2',
         active
-          ? 'border-accent-primary bg-accent-mist text-accent-soft'
-          : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/45 hover:bg-card-inner',
+          ? 'bg-elevated text-accent-soft shadow-sm ring-1 ring-accent-primary/30'
+          : 'text-text-muted hover:bg-elevated/40 hover:text-text-on-dark',
       )}
     >
-      <span className={cn('shrink-0', active ? 'text-accent-primary' : 'text-accent-primary/80')}>
+      <span
+        className={cn(
+          'flex h-3.5 w-3.5 shrink-0 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5',
+          active ? 'text-accent-primary' : 'text-accent-primary/70',
+        )}
+      >
         {icon}
       </span>
-      {label}
+      <span className="text-center text-[11px] leading-none font-medium sm:text-xs">{label}</span>
     </button>
   )
 }
