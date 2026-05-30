@@ -418,20 +418,22 @@ export function ProductGrid({
           )}
         </div>
 
-        <div className="-mx-1 flex gap-0 overflow-x-auto px-1 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {categoryOrder.map((cat) => {
-            const count = products.filter((p) => p.category === cat).length
-            if (count === 0) return null
-            return (
-              <CategoryTab
-                key={cat}
-                label={categoryLabels[cat]}
-                icon={categoryIcons[cat]}
-                active={activeCategory === cat && !activeBrand}
-                onClick={() => onSelectCategory(cat)}
-              />
-            )
-          })}
+        <div className="rounded-xl border border-border-on-dark bg-elevated p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {categoryOrder.map((cat) => {
+              const count = products.filter((p) => p.category === cat).length
+              if (count === 0) return null
+              return (
+                <CategoryTab
+                  key={cat}
+                  label={categoryLabels[cat]}
+                  icon={categoryIcons[cat]}
+                  active={activeCategory === cat && !activeBrand}
+                  onClick={() => onSelectCategory(cat)}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -677,13 +679,15 @@ function CategoryTab({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
+        'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors',
         active
-          ? 'border-accent-primary text-accent-soft'
-          : 'border-transparent text-text-muted hover:text-text-on-dark',
+          ? 'bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/25'
+          : 'text-text-muted hover:bg-card-inner hover:text-text-on-dark',
       )}
     >
-      <span className={active ? 'text-accent-primary' : 'text-text-faint'}>{icon}</span>
+      <span className={cn('shrink-0', active ? 'text-text-on-accent/90' : 'text-accent-primary')}>
+        {icon}
+      </span>
       {label}
     </button>
   )
