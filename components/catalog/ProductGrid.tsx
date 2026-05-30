@@ -371,51 +371,37 @@ export function ProductGrid({
       </div>
 
       <div className="mb-4 space-y-2">
-        <button
-          type="button"
-          onClick={onSelectAll}
-          className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
-            activeCategory === 'all'
-              ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/25'
-              : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
-          )}
-        >
-          <Layers className="h-4 w-4" />
-          <span>Все товары</span>
-          <span
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onSelectAll}
             className={cn(
-              'rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+              'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
               activeCategory === 'all'
-                ? 'bg-text-on-accent/15 text-text-on-accent'
-                : 'bg-text-on-dark/10 text-text-muted',
+                ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/25'
+                : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
             )}
           >
-            {products.length}
-          </span>
-        </button>
-
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {categoryOrder.map((cat) => {
-            const count = products.filter((p) => p.category === cat).length
-            if (count === 0) return null
-            return (
-              <CategoryPlate
-                key={cat}
-                label={categoryLabels[cat]}
-                icon={categoryIcons[cat]}
-                active={activeCategory === cat && !activeBrand}
-                onClick={() => onSelectCategory(cat)}
-              />
-            )
-          })}
+            <Layers className="h-4 w-4 shrink-0" />
+            <span className="truncate">Все товары</span>
+            <span
+              className={cn(
+                'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+                activeCategory === 'all'
+                  ? 'bg-text-on-accent/15 text-text-on-accent'
+                  : 'bg-text-on-dark/10 text-text-muted',
+              )}
+            >
+              {products.length}
+            </span>
+          </button>
 
           {hasFilterPanelContent && (
             <button
               type="button"
               onClick={handleFilterButtonClick}
               className={cn(
-                'flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
+                'inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
                 showFilters || panelFilterCount > 0
                   ? 'border-accent-primary bg-accent-mist text-accent-soft'
                   : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
@@ -430,6 +416,22 @@ export function ProductGrid({
               )}
             </button>
           )}
+        </div>
+
+        <div className="-mx-1 flex gap-0 overflow-x-auto px-1 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {categoryOrder.map((cat) => {
+            const count = products.filter((p) => p.category === cat).length
+            if (count === 0) return null
+            return (
+              <CategoryTab
+                key={cat}
+                label={categoryLabels[cat]}
+                icon={categoryIcons[cat]}
+                active={activeCategory === cat && !activeBrand}
+                onClick={() => onSelectCategory(cat)}
+              />
+            )
+          })}
         </div>
       </div>
 
@@ -659,7 +661,7 @@ export function ProductGrid({
   )
 }
 
-function CategoryPlate({
+function CategoryTab({
   label,
   icon,
   active,
@@ -675,16 +677,14 @@ function CategoryPlate({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex w-full items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-sm font-medium transition-colors',
+        'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
         active
-          ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/25'
-          : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
+          ? 'border-accent-primary text-accent-soft'
+          : 'border-transparent text-text-muted hover:text-text-on-dark',
       )}
     >
-      <span className={cn('shrink-0', active ? 'text-text-on-accent/90' : 'text-accent-primary')}>
-        {icon}
-      </span>
-      <span className="truncate">{label}</span>
+      <span className={active ? 'text-accent-primary' : 'text-text-faint'}>{icon}</span>
+      {label}
     </button>
   )
 }
