@@ -375,7 +375,7 @@ export function ProductGrid({
         </div>
       </div>
 
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 space-y-1.5">
         <div className="flex gap-2">
           <button
             type="button"
@@ -424,7 +424,7 @@ export function ProductGrid({
         </div>
 
         <div
-          className="flex rounded-xl border border-border-on-dark bg-card-inner p-1"
+          className="flex gap-0.5 rounded-xl border border-border-on-dark bg-card-inner p-0.5"
           role="tablist"
           aria-label="Категории"
         >
@@ -684,7 +684,7 @@ function CategorySegment({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-lg px-0.5 py-1.5 transition-colors sm:gap-1 sm:px-1 sm:py-2',
+        'flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-1 py-2.5 transition-colors sm:px-1.5 sm:py-2.5',
         active
           ? 'bg-elevated text-accent-soft shadow-sm ring-1 ring-accent-primary/30'
           : 'text-text-muted hover:bg-elevated/40 hover:text-text-on-dark',
@@ -692,13 +692,13 @@ function CategorySegment({
     >
       <span
         className={cn(
-          'flex h-3.5 w-3.5 shrink-0 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5',
+          'flex h-4 w-4 shrink-0 items-center justify-center [&>svg]:h-4 [&>svg]:w-4',
           active ? 'text-accent-primary' : 'text-accent-primary/70',
         )}
       >
         {icon}
       </span>
-      <span className="text-center text-[11px] leading-none font-medium sm:text-xs">{label}</span>
+      <span className="text-center text-xs leading-tight font-medium sm:text-sm">{label}</span>
     </button>
   )
 }
