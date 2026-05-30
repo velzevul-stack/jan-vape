@@ -39,26 +39,24 @@ function Start-DockerDatabase {
   throw 'PostgreSQL в Docker не поднялся за отведённое время'
 }
 
-function Install-DockerHint {
+function Show-NoVirtualizationHint {
   Write-Host ''
-  Write-Host '=== Docker не установлен или не запущен ==='
-  Write-Host '1) Установите Docker Desktop: https://www.docker.com/products/docker-desktop/'
-  Write-Host '   Или запустите установщик (если уже скачан через choco):'
-  Write-Host '   C:\Temp\chocolatey\docker-desktop\4.75.0\Docker Desktop Installer.exe'
-  Write-Host '2) После установки перезагрузите ПК и запустите Docker Desktop (статус Running).'
-  Write-Host '3) Снова выполните: npm run dev:setup'
+  Write-Host '=== Virtualization недоступна — Docker не запустится ==='
+  Write-Host ''
+  Write-Host 'Причины: VT-x/AMD-V выключен в BIOS, старый CPU, политика IT.'
+  Write-Host ''
+  Write-Host 'Используйте Neon dev (без Docker, без виртуализации):'
+  Write-Host '  1) Отдельный проект/branch в https://neon.tech'
+  Write-Host '  2) $env:NEON_DEV_DATABASE_URL="postgresql://..."; npm run dev:setup:neon'
+  Write-Host '  3) npm run dev'
+  Write-Host ''
+  Write-Host 'Фронт на localhost:3000, БД в облаке — от production отдельно.'
   Write-Host ''
   exit 1
 }
 
 if (-not (Test-DockerReady)) {
-  if (Get-Command choco -ErrorAction SilentlyContinue) {
-    Write-Host 'Пробую установить Docker Desktop через Chocolatey (может потребоваться подтверждение UAC)...'
-    choco install docker-desktop -y --no-progress
-  }
-  if (-not (Test-DockerReady)) {
-    Install-DockerHint
-  }
+  Show-NoVirtualizationHint
 }
 
 Ensure-EnvLocal

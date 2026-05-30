@@ -12,7 +12,27 @@ psql "$DATABASE_URL" -f scripts/migrate-notification-outbox.sql
 
 Env для webhook-уведомлений ботов: `NOTIFY_WEBHOOK_SHOP_KEY`, `NOTIFY_WEBHOOK_HMAC_SECRET` (см. `.env.local.example`).
 
-## Локальная разработка (Docker Postgres)
+## Локальная разработка
+
+Фронт: `npm run dev` → http://localhost:3000. Данные БД на VPS не попадают (`.env.local` в gitignore).
+
+### Вариант A — без Docker (если нет virtualization)
+
+Подходит, когда Docker пишет *Virtualization support not detected*.
+
+1. Создайте **отдельный** проект или branch в [Neon](https://neon.tech) (не production).
+2. В PowerShell:
+
+```powershell
+cd jan-vape-suite
+$env:NEON_DEV_DATABASE_URL="postgresql://..."
+npm run dev:setup:neon
+npm run dev
+```
+
+Повторный seed: `npm run dev:seed` (с тем же `DATABASE_URL` в `.env.local`).
+
+### Вариант B — Docker Postgres (если VT-x включён)
 
 ```powershell
 cd jan-vape-suite
@@ -20,10 +40,8 @@ npm run dev:setup
 npm run dev
 ```
 
-Сайт: http://localhost:3000 — локальная БД на порту **54329**, данные не уходят на VPS.
+БД на порту **54329**. Остановить: `npm run dev:db:down`.
 
-Повторный seed: `npm run dev:seed`. Остановить БД: `npm run dev:db:down`.
-
-Шаблон env: `.env.local.dev` → копируется в `.env.local` (gitignore).
+Шаблоны env: `.env.local.neon-dev`, `.env.local.dev`.
 
 Полная документация: `obsidian-vault/projects/vapestore/`.
