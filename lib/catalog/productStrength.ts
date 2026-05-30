@@ -3,21 +3,49 @@ import { parseStrengthMg } from '@/lib/mock-data'
 
 const STRENGTH_CATEGORIES = new Set<ProductCategory>(['liquid', 'snus'])
 
+export const MG_MIN = 1
+export const MG_MAX = 150
+
 export function categoryUsesStrengthFilter(category: ProductCategory): boolean {
   return STRENGTH_CATEGORIES.has(category)
 }
 
+function isValidMg(n: number): boolean {
+  return Number.isFinite(n) && n >= MG_MIN && n <= MG_MAX
+}
+
+function prepareStrengthSource(text: string): string {
+  return text
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u2010-\u2015\u2212–—]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const MG_SUFFIX =
+  String.raw `(?:m\s*g|м\s*г)(?:\s*\/\s*(?:m\s*l|м\s*л))?`
+
+const STRENGTH_PATTERNS: RegExp[] = [
+  new RegExp(String.raw `(?<!\d)(\d{1,3})\s*[-_/.,]?\s*${MG_SUFFIX}`, 'gi'),
+  new RegExp(String.raw `(?<!\d)(\d{1,3})${MG_SUFFIX}`, 'gi'),
+]
+
 export function extractStrengthMgValues(text: string): number[] {
   if (!text.trim()) return []
-  const normalized = text.toLowerCase()
-  const regex =
-    /(?<!\d)(\d{1,3})\s*[-_/.,]?\s*(?:m\s*g|м\s*г)(?![A-Za-zА-Яа-яЁё0-9_])/g
+
+  const source = prepareStrengthSource(text)
   const result = new Set<number>()
-  for (const match of normalized.matchAll(regex)) {
-    const n = parseInt(match[1] ?? '', 10)
-    if (n >= 1 && n <= 99) result.add(n)
+
+  for (const pattern of STRENGTH_PATTERNS) {
+    pattern.lastIndex = 0
+    for (const match of source.matchAll(pattern)) {
+      const n = parseInt(match[1] ?? '', 10)
+      if (isValidMg(n)) result.add(n)
+    }
   }
-  return Array.from(result)
+
+  return Array.from(result).sort((a, b) => a - b)
 }
 
 export function getProductStrengthValues(
@@ -28,12 +56,12 @@ export function getProductStrengthValues(
   const values = new Set<number>()
   for (const n of extractStrengthMgValues(product.brand)) values.add(n)
   for (const n of extractStrengthMgValues(product.specification ?? '')) values.add(n)
+  for (const n of extractStrengthMgValues(String(product.strength ?? ''))) values.add(n)
 
   const fromField = parseStrengthMg(product.strength)
-  if (fromField != null && fromField >= 1 && fromField <= 99) {
+  if (fromField != null && isValidMg(Math.round(fromField))) {
     values.add(Math.round(fromField))
   }
-  for (const n of extractStrengthMgValues(String(product.strength ?? ''))) values.add(n)
 
   return Array.from(values).sort((a, b) => a - b)
 }
@@ -66,7 +94,9 @@ export function collectStrengthOptions(
   for (const raw of extraRawValues) {
     for (const mg of extractStrengthMgValues(raw)) values.add(mg)
     const parsed = parseStrengthMg(raw)
-    if (parsed != null && parsed >= 1 && parsed <= 99) values.add(Math.round(parsed))
+    if (parsed != null && isValidMg(Math.round(parsed))) {
+      values.add(Math.round(parsed))
+    }
   }
   return Array.from(values).sort((a, b) => a - b)
 }
