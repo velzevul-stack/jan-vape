@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-local-dev.ps1",
+    "dev:db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:db:down": "docker compose -f docker-compose.dev.yml down",
+    "dev:seed": "tsx scripts/seed-local-dev.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
@@ -71,5 +75,8 @@
     "typeorm": "^1.0.0",
     "vaul": "^1.1.2",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
   }
 }

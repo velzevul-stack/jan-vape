@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jan-vape-dev-postgres
+    restart: unless-stopped
+    ports:
+      - "54329:5432"
+    environment:
+      POSTGRES_USER: jan
+      POSTGRES_PASSWORD: jan_dev_local
+      POSTGRES_DB: jan_vape_dev
+    volumes:
+      - jan_vape_dev_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jan -d jan_vape_dev"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  jan_vape_dev_pg:
