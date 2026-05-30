@@ -17,18 +17,21 @@ function isValidMg(n: number): boolean {
 function prepareStrengthSource(text: string): string {
   return text
     .normalize('NFKC')
-    .toLowerCase()
+    .toLocaleLowerCase('ru-RU')
     .replace(/[\u2010-\u2015\u2212–—]/g, '-')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
-const MG_SUFFIX =
-  String.raw `(?:m\s*g|м\s*г)(?:\s*\/\s*(?:m\s*l|м\s*л))?`
+const M_CHAR = String.raw `[m\u043C]`
+const G_CHAR = String.raw `[g\u0433]`
+const L_CHAR = String.raw `[l\u043B]`
+
+const MG_SUFFIX = String.raw `(?:${M_CHAR}\s*${G_CHAR})(?:\s*\/\s*(?:${M_CHAR}\s*${L_CHAR}))?`
 
 const STRENGTH_PATTERNS: RegExp[] = [
-  new RegExp(String.raw `(?<!\d)(\d{1,3})\s*[-_/.,]?\s*${MG_SUFFIX}`, 'gi'),
-  new RegExp(String.raw `(?<!\d)(\d{1,3})${MG_SUFFIX}`, 'gi'),
+  new RegExp(String.raw `(?<!\d)(\d{1,3})\s*[-_/.,]?\s*${MG_SUFFIX}`, 'g'),
+  new RegExp(String.raw `(?<!\d)(\d{1,3})${MG_SUFFIX}`, 'g'),
 ]
 
 export function extractStrengthMgValues(text: string): number[] {
