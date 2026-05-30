@@ -3,6 +3,7 @@ import { DataSource, type Repository } from 'typeorm'
 import { ProductSnapshot } from '../entities/ProductSnapshot'
 import { PickupLocation } from '../entities/PickupLocation'
 import { CustomAddress } from '../entities/CustomAddress'
+import { DeliveryZone } from '../entities/DeliveryZone'
 import { WebBooking } from '../entities/WebBooking'
 import { WebSale } from '../entities/WebSale'
 import { BlockedSlot } from '../entities/BlockedSlot'
@@ -17,6 +18,7 @@ export const entityRegistry = {
   ProductSnapshot,
   PickupLocation,
   CustomAddress,
+  DeliveryZone,
   WebBooking,
   WebSale,
   BlockedSlot,
@@ -32,6 +34,7 @@ export const entityTableNames = {
   ProductSnapshot: 'product_snapshots',
   PickupLocation: 'pickup_locations',
   CustomAddress: 'custom_addresses',
+  DeliveryZone: 'delivery_zones',
   WebBooking: 'web_bookings',
   WebSale: 'web_sales',
   BlockedSlot: 'blocked_slots',

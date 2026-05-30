@@ -40,11 +40,14 @@ function SlotButton({
   onSelect: () => void
 }) {
   const isPast = slot.reason === 'past'
+  const isBusy = slot.reason === 'busy'
   const isDisabled = !slot.available
   const hasBookings = (slot.bookingsCount ?? 0) > 0
   const tooltip = isPast
     ? 'Время уже прошло или слишком близко'
-    : hasBookings
+    : isBusy
+      ? 'Курьер занят в это время'
+      : hasBookings
       ? `Уже есть бронь(и) на это время — продавец подтвердит вручную`
       : 'Время доступно'
 
@@ -99,13 +102,13 @@ function SlotLegend() {
 }
 
 export function TimeSlotGrid() {
-  const { pickupLocationId, customAddressText, pickupDate, pickupTime, setPickupTime } = useBooking()
+  const { pickupLocationId, deliveryZone, pickupDate, pickupTime, setPickupTime } = useBooking()
 
   const { slots, isLoading, error } = useSlots({
     locationId: pickupLocationId ?? undefined,
-    customAddress: customAddressText ?? undefined,
+    deliveryZoneId: deliveryZone?.id,
     date: pickupDate ?? undefined,
-    enabled: !!pickupDate && (!!pickupLocationId || !!customAddressText),
+    enabled: !!pickupDate && (!!pickupLocationId || !!deliveryZone?.id),
   })
 
   const slotsByPeriod = useMemo(() => {
@@ -143,7 +146,7 @@ export function TimeSlotGrid() {
     )
   }
 
-  if (!pickupLocationId && !customAddressText) {
+  if (!pickupLocationId && !deliveryZone) {
     return (
       <PromptState
         icon={<AlertCircle className="h-5 w-5" />}

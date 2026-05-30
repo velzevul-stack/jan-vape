@@ -21,7 +21,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const bookings = pendingOnly
     ? await repo.find({
         where: { status: 'pending' },
-        relations: { location: true, customAddress: true },
+        relations: { location: true, customAddress: true, deliveryZone: true },
         order: { createdAt: 'DESC' },
         take: limit,
       })
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const since = new Date(sinceMs || 0)
         return repo.find({
           where: { updatedAt: MoreThan(since) },
-          relations: { location: true, customAddress: true },
+          relations: { location: true, customAddress: true, deliveryZone: true },
           order: { updatedAt: 'ASC' },
           take: limit,
         })
@@ -67,6 +67,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       locationAddress: b.location?.address ?? null,
       customAddressId: b.customAddressId,
       customAddressLabel: b.customAddress?.label ?? null,
+      deliveryZoneId: b.deliveryZoneId,
+      deliveryZoneName: b.deliveryZone?.name ?? null,
+      deliveryFee: Number(b.deliveryFee ?? 0),
+      roundTripMinutes: b.roundTripMinutes,
       items: b.items.map((item) => {
         const product = snapshotById.get(item.productId)
         return {

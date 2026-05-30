@@ -11,6 +11,7 @@ import {
 } from 'typeorm'
 import { PickupLocation } from './PickupLocation'
 import { CustomAddress } from './CustomAddress'
+import { DeliveryZone } from './DeliveryZone'
 
 export type WebBookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
 export type WebBookingSource = 'web' | 'app'
@@ -53,6 +54,19 @@ export class WebBooking {
   @ManyToOne(() => CustomAddress, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'customAddressId' })
   customAddress!: CustomAddress | null
+
+  @Column({ type: 'uuid', nullable: true })
+  deliveryZoneId!: string | null
+
+  @ManyToOne(() => DeliveryZone, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'deliveryZoneId' })
+  deliveryZone!: DeliveryZone | null
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  deliveryFee!: number
+
+  @Column({ type: 'int', nullable: true })
+  roundTripMinutes!: number | null
 
   @Column({ type: 'jsonb', default: '[]' })
   items!: Array<{

@@ -17,7 +17,7 @@ import { PageContainer } from '@/components/layout/PageContainer'
 
 export default function CartPage() {
   const { items, totalItems, totalPrice, clearCart, syncWithCatalog, cartLimitMessage } = useCart()
-  const { isPickupSelected } = useBooking()
+  const { isLocationSelected } = useBooking()
   const { products } = useCatalog({}, { refreshInterval: 5_000 })
 
   useEffect(() => {
@@ -118,12 +118,12 @@ export default function CartPage() {
                 </div>
 
                 <Link
-                  href={isPickupSelected ? '/checkout' : '#'}
-                  onClick={(e) => !isPickupSelected && e.preventDefault()}
+                  href={isLocationSelected ? '/checkout' : '#'}
+                  onClick={(e) => !isLocationSelected && e.preventDefault()}
                   className={cn(
                     'flex h-14 w-full items-center justify-center gap-2 rounded-full',
                     'font-display text-base font-extrabold uppercase tracking-wider transition-all duration-200',
-                    isPickupSelected
+                    isLocationSelected
                       ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
                       : 'cursor-not-allowed bg-card-inner text-text-faint',
                   )}

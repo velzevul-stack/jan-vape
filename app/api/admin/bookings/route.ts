@@ -27,6 +27,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .createQueryBuilder('wb')
     .leftJoinAndSelect('wb.location', 'loc')
     .leftJoinAndSelect('wb.customAddress', 'ca')
+    .leftJoinAndSelect('wb.deliveryZone', 'dz')
     .orderBy('wb.scheduledAt', 'ASC')
     .take(limit)
     .skip(offset)
@@ -47,6 +48,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       scheduledAt: b.scheduledAt.toISOString(),
       locationName: b.location?.name ?? null,
       customAddressLabel: b.customAddress?.label ?? null,
+      deliveryZoneName: b.deliveryZone?.name ?? null,
+      deliveryFee: Number(b.deliveryFee ?? 0),
+      roundTripMinutes: b.roundTripMinutes,
       items: b.items,
       totalAmount: Number(b.totalAmount),
       status: b.status,

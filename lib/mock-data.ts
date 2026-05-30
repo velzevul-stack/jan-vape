@@ -36,7 +36,7 @@ export interface TimeSlot {
   time: string
   available: boolean
   bookingsCount?: number
-  reason?: 'past'
+  reason?: 'past' | 'busy'
 }
 
 export interface CartItem {

@@ -52,18 +52,7 @@ export default function CheckoutPage() {
     }
   }, [products, syncWithCatalog])
 
-  const {
-    pickupLocationId,
-    customAddressText,
-    pickupDate,
-    pickupTime,
-    customerName,
-    customerTelegram,
-    comment,
-    isPickupSelected,
-    isSlotSelected,
-    resetBooking,
-  } = useBooking()
+  const { pickupLocationId, customAddressText, pickupDate, pickupTime, customerName, customerTelegram, comment, deliveryZone, deliveryFee, isLocationSelected, isDeliverySelected, isSlotSelected, resetBooking } = useBooking()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isChangingLocation, setIsChangingLocation] = useState(false)
@@ -72,7 +61,8 @@ export default function CheckoutPage() {
   const isNameValid = customerName.trim().length >= 2
   const isTelegramValid = isValidTelegramUsername(customerTelegram)
   const canSubmit =
-    isPickupSelected && isSlotSelected && isNameValid && isTelegramValid && items.length > 0
+    isLocationSelected && isSlotSelected && isNameValid && isTelegramValid && items.length > 0
+  const orderTotal = totalPrice + deliveryFee
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || isSubmitting || !pickupDate || !pickupTime) return
@@ -107,7 +97,10 @@ export default function CheckoutPage() {
 
     const body = {
       ...(pickupLocationId ? { pickupLocationId } : {}),
-      ...(customAddressText ? { customAddressText } : {}),
+      ...(customAddressText && deliveryZone ? {
+        customAddressText,
+        deliveryZoneId: deliveryZone.id,
+      } : {}),
       scheduledAt,
       customerName: customerName.trim(),
       customerTelegram: normalizeTelegramUsername(customerTelegram),
@@ -129,13 +122,18 @@ export default function CheckoutPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         if (res.status === 409) {
-          await mutate(
-            (key: string) => typeof key === 'string' && key.startsWith('/api/catalog'),
-            undefined,
-            { revalidate: true },
-          )
-          syncWithCatalog(catalog.products)
-          setSubmitError('Недостаточно товара на посту. Корзина обновлена — проверьте заказ.')
+          const errCode = err.code as string | undefined
+          if (errCode === 'delivery_slot_busy') {
+            setSubmitError('Это время доставки уже занято. Выберите другое время.')
+          } else {
+            await mutate(
+              (key: string) => typeof key === 'string' && key.startsWith('/api/catalog'),
+              undefined,
+              { revalidate: true },
+            )
+            syncWithCatalog(catalog.products)
+            setSubmitError('Недостаточно товара на посту. Корзина обновлена — проверьте заказ.')
+          }
         } else {
           setSubmitError(err.error ?? 'Произошла ошибка. Попробуйте ещё раз.')
         }
@@ -163,7 +161,9 @@ export default function CheckoutPage() {
             retailPrice: i.product.retailPrice,
             quantity: i.quantity,
           })),
-          total: lines.reduce((sum, i) => sum + i.product.retailPrice * i.quantity, 0),
+          total: orderTotal,
+          deliveryFee,
+          deliveryZoneName: deliveryZone?.name ?? null,
         }),
       )
 
@@ -195,6 +195,8 @@ export default function CheckoutPage() {
     pickupTime,
     pickupLocationId,
     customAddressText,
+    deliveryZone,
+    deliveryFee,
     customerName,
     customerTelegram,
     comment,
@@ -207,7 +209,7 @@ export default function CheckoutPage() {
     router,
   ])
 
-  const locationLabel = customAddressText ?? null
+  const locationLabel = customAddressText ?? locations.find(l => l.id === pickupLocationId)?.name ?? null
 
   if (items.length === 0) {
     return (
@@ -278,11 +280,25 @@ export default function CheckoutPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border-on-dark pt-4">
-                    <span className="text-text-muted">Итого ({totalItems} шт.)</span>
-                    <span className="font-display text-xl font-extrabold tabular-nums text-accent-soft">
-                      {formatPrice(totalPrice)}
-                    </span>
+                  <div className="mt-4 space-y-2 border-t border-border-on-dark pt-4">
+                    {deliveryFee > 0 && (
+                      <div className="flex items-center justify-between text-sm text-text-muted">
+                        <span>Доставка{deliveryZone ? ` (${deliveryZone.name})` : ''}</span>
+                        <span className="tabular-nums text-text-on-dark">{formatPrice(deliveryFee)}</span>
+                      </div>
+                    )}
+                    {isDeliverySelected && deliveryFee === 0 && (
+                      <div className="flex items-center justify-between text-sm text-text-muted">
+                        <span>Доставка{deliveryZone ? ` (${deliveryZone.name})` : ''}</span>
+                        <span className="text-status-success">бесплатно</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-muted">Итого ({totalItems} шт.)</span>
+                      <span className="font-display text-xl font-extrabold tabular-nums text-accent-soft">
+                        {formatPrice(orderTotal)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -291,7 +307,7 @@ export default function CheckoutPage() {
                 <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                   ТОЧКА ВЫДАЧИ
                 </h3>
-                {isPickupSelected && !isChangingLocation ? (
+                {isLocationSelected && !isChangingLocation ? (
                   <div className="flex items-center gap-4 rounded-3xl border border-accent-primary/30 bg-elevated p-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-primary shadow-lg shadow-accent-primary/30">
                       <MapPin className="h-5 w-5 text-text-on-accent" />
@@ -345,9 +361,9 @@ export default function CheckoutPage() {
 
                 <div className="mb-6 space-y-3">
                   <ChecklistItem
-                    checked={isPickupSelected}
-                    label="Точка выдачи"
-                    value={isPickupSelected ? (locationLabel ?? 'Точка выбрана') : undefined}
+                    checked={isLocationSelected}
+                    label={isDeliverySelected ? 'Доставка' : 'Точка выдачи'}
+                    value={isLocationSelected ? (locationLabel ?? 'Выбрано') : undefined}
                   />
                   <ChecklistItem
                     checked={!!pickupDate}
@@ -377,10 +393,23 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {deliveryFee > 0 && (
+                  <div className="mb-4 flex items-center justify-between text-sm">
+                    <span className="text-text-muted">Доставка</span>
+                    <span className="font-medium tabular-nums text-text-on-dark">{formatPrice(deliveryFee)}</span>
+                  </div>
+                )}
+                {isDeliverySelected && deliveryFee === 0 && (
+                  <div className="mb-4 flex items-center justify-between text-sm">
+                    <span className="text-text-muted">Доставка</span>
+                    <span className="font-medium text-status-success">бесплатно</span>
+                  </div>
+                )}
+
                 <div className="mb-6 flex items-center justify-between border-t border-border-on-dark pt-4">
                   <span className="font-display font-bold tracking-wider text-text-muted">ИТОГО</span>
                   <span className="font-display text-3xl font-extrabold tabular-nums text-text-on-dark">
-                    {formatPrice(totalPrice)}
+                    {formatPrice(orderTotal)}
                   </span>
                 </div>
 

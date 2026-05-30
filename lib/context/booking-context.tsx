@@ -2,9 +2,17 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 
+interface DeliveryZoneSelection {
+  id: string
+  name: string
+  deliveryFee: number
+  roundTripMinutes: number
+}
+
 interface BookingState {
   pickupLocationId: string | null
   customAddressText: string | null
+  deliveryZone: DeliveryZoneSelection | null
   pickupDate: string | null
   pickupTime: string | null
   customerName: string
@@ -14,7 +22,7 @@ interface BookingState {
 
 interface BookingContextType extends BookingState {
   setPickupLocation: (locationId: string) => void
-  setCustomAddress: (text: string) => void
+  setDeliveryAddress: (text: string, zone: DeliveryZoneSelection) => void
   clearLocation: () => void
   setPickupDate: (date: string | null) => void
   setPickupTime: (time: string | null) => void
@@ -23,7 +31,10 @@ interface BookingContextType extends BookingState {
   setComment: (comment: string) => void
   resetBooking: () => void
   isPickupSelected: boolean
+  isDeliverySelected: boolean
+  isLocationSelected: boolean
   isSlotSelected: boolean
+  deliveryFee: number
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined)
@@ -33,6 +44,7 @@ const BOOKING_STORAGE_KEY = 'vapestore-booking'
 const initialState: BookingState = {
   pickupLocationId: null,
   customAddressText: null,
+  deliveryZone: null,
   pickupDate: null,
   pickupTime: null,
   customerName: '',
@@ -44,6 +56,14 @@ function migrateStoredBooking(parsed: Record<string, unknown>): Partial<BookingS
   const migrated: Partial<BookingState> = { ...parsed } as Partial<BookingState>
   if (!migrated.customerTelegram && typeof parsed.customerPhone === 'string') {
     migrated.customerTelegram = parsed.customerPhone
+  }
+  if (parsed.deliveryZoneId && parsed.deliveryZoneName) {
+    migrated.deliveryZone = {
+      id: String(parsed.deliveryZoneId),
+      name: String(parsed.deliveryZoneName),
+      deliveryFee: Number(parsed.deliveryFee ?? 0),
+      roundTripMinutes: Number(parsed.roundTripMinutes ?? 0),
+    }
   }
   return migrated
 }
@@ -67,37 +87,43 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isHydrated) {
-      localStorage.setItem(BOOKING_STORAGE_KEY, JSON.stringify(state))
+      localStorage.setItem(
+        BOOKING_STORAGE_KEY,
+        JSON.stringify({
+          ...state,
+          deliveryZoneId: state.deliveryZone?.id ?? null,
+          deliveryZoneName: state.deliveryZone?.name ?? null,
+          deliveryFee: state.deliveryZone?.deliveryFee ?? 0,
+          roundTripMinutes: state.deliveryZone?.roundTripMinutes ?? null,
+        }),
+      )
     }
   }, [state, isHydrated])
 
   const setPickupLocation = useCallback((locationId: string) => {
     setState((prev) => {
-      if (prev.pickupLocationId === locationId && !prev.customAddressText) {
+      if (prev.pickupLocationId === locationId && !prev.customAddressText && !prev.deliveryZone) {
         return prev
       }
       return {
         ...prev,
         pickupLocationId: locationId,
         customAddressText: null,
+        deliveryZone: null,
         pickupTime: null,
       }
     })
   }, [])
 
-  const setCustomAddress = useCallback((text: string) => {
+  const setDeliveryAddress = useCallback((text: string, zone: DeliveryZoneSelection) => {
     const trimmed = text.trim()
-    setState((prev) => {
-      if (prev.customAddressText === trimmed && !prev.pickupLocationId) {
-        return prev
-      }
-      return {
-        ...prev,
-        pickupLocationId: null,
-        customAddressText: trimmed || null,
-        pickupTime: null,
-      }
-    })
+    setState((prev) => ({
+      ...prev,
+      pickupLocationId: null,
+      customAddressText: trimmed || null,
+      deliveryZone: zone,
+      pickupTime: null,
+    }))
   }, [])
 
   const clearLocation = useCallback(() => {
@@ -105,6 +131,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       pickupLocationId: null,
       customAddressText: null,
+      deliveryZone: null,
       pickupTime: null,
     }))
   }, [])
@@ -138,15 +165,19 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(BOOKING_STORAGE_KEY)
   }, [])
 
-  const isPickupSelected = state.pickupLocationId !== null || state.customAddressText !== null
+  const isPickupSelected = state.pickupLocationId !== null
+  const isDeliverySelected =
+    state.customAddressText !== null && state.deliveryZone !== null
+  const isLocationSelected = isPickupSelected || isDeliverySelected
   const isSlotSelected = state.pickupDate !== null && state.pickupTime !== null
+  const deliveryFee = state.deliveryZone?.deliveryFee ?? 0
 
   return (
     <BookingContext.Provider
       value={{
         ...state,
         setPickupLocation,
-        setCustomAddress,
+        setDeliveryAddress,
         clearLocation,
         setPickupDate,
         setPickupTime,
@@ -155,7 +186,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         setComment,
         resetBooking,
         isPickupSelected,
+        isDeliverySelected,
+        isLocationSelected,
         isSlotSelected,
+        deliveryFee,
       }}
     >
       {children}

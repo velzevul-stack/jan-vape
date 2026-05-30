@@ -25,6 +25,8 @@ interface ConfirmationSnapshot {
   scheduledAt: string
   items: ConfirmationItem[]
   total: number
+  deliveryFee?: number
+  deliveryZoneName?: string | null
 }
 
 interface ConfirmationPageProps {
@@ -182,11 +184,19 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-border-subtle pt-4">
-              <span className="font-display font-bold text-text-on-card">ИТОГО К ОПЛАТЕ</span>
-              <span className="text-xl font-bold tabular-nums text-text-on-card">
-                {formatPrice(snapshot.total)}
-              </span>
+            <div className="mt-4 space-y-2 border-t border-border-subtle pt-4">
+              {(snapshot.deliveryFee ?? 0) > 0 && (
+                <div className="flex items-center justify-between text-sm text-text-muted">
+                  <span>Доставка{snapshot.deliveryZoneName ? ` (${snapshot.deliveryZoneName})` : ''}</span>
+                  <span className="tabular-nums text-text-on-card">{formatPrice(snapshot.deliveryFee ?? 0)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="font-display font-bold text-text-on-card">ИТОГО К ОПЛАТЕ</span>
+                <span className="text-xl font-bold tabular-nums text-text-on-card">
+                  {formatPrice(snapshot.total)}
+                </span>
+              </div>
             </div>
           </div>
 

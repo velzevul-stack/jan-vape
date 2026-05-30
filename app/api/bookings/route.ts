@@ -15,10 +15,13 @@ import { tgSessionCookieName, telegramFromSession, verifyTgSession } from '@/src
 import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/src/lib/unverifiedLimits'
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
+import { assertDeliverySlotAvailable } from '@/src/lib/deliveryBookingValidation'
+import { storeDayBounds } from '@/lib/dates'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
   customAddressText: z.string().min(2).max(500).optional(),
+  deliveryZoneId: z.string().uuid().optional(),
   scheduledAt: z.string().datetime(),
   customerName: z.string().min(2).max(255),
   customerTelegram: z.string().min(3).max(255),
@@ -33,8 +36,11 @@ const BookingSchema = z.object({
     )
     .min(1),
 }).refine(
-  (d) => d.pickupLocationId || d.customAddressText,
-  'Either pickupLocationId or customAddressText is required',
+  (d) => d.pickupLocationId || (d.customAddressText && d.deliveryZoneId),
+  'Either pickupLocationId or delivery address with zone is required',
+).refine(
+  (d) => !d.pickupLocationId || !d.deliveryZoneId,
+  'Use either pickup location or delivery zone',
 )
 
 function generatePublicNumber(): string {
@@ -54,6 +60,8 @@ interface SavedBookingResult {
   totalAmount: number
   locationLabel: string | null
   customAddressLabel: string | null
+  deliveryZoneName: string | null
+  deliveryFee: number
   itemsSnapshot: Array<{
     productId: string
     quantity: number
@@ -106,12 +114,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   await ds.transaction(async (txn) => {
     const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
     const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
+    const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
     const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
 
     let locationId: string | null = null
     let customAddressId: string | null = null
+    let deliveryZoneId: string | null = null
+    let deliveryFee = 0
+    let roundTripMinutes: number | null = null
     let locationLabel: string | null = null
     let customAddressLabel: string | null = null
+    let deliveryZoneName: string | null = null
 
     if (data.pickupLocationId) {
       const loc = await locationRepo.findOne({ where: { id: data.pickupLocationId } })
@@ -121,7 +134,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       locationId = loc.id
       locationLabel = loc.name
-    } else if (data.customAddressText) {
+    } else if (data.customAddressText && data.deliveryZoneId) {
+      const zone = await zoneRepo.findOne({ where: { id: data.deliveryZoneId, isActive: true } })
+      if (!zone) {
+        errorResponse = NextResponse.json({ error: 'Delivery zone not found' }, { status: 404 })
+        return
+      }
+      deliveryZoneId = zone.id
+      deliveryZoneName = zone.name
+      deliveryFee = Number(zone.deliveryFee)
+      roundTripMinutes = zone.roundTripMinutes
+
       const key = normalizeAddress(data.customAddressText)
       let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
       if (!addr) {
@@ -135,6 +158,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       customAddressId = addr.id
       customAddressLabel = addr.label
+
+      const day = scheduledAt.toISOString().slice(0, 10)
+      const { start: dayStart, end: dayEnd } = storeDayBounds(day)
+      const existingDeliveries = await bookingRepo
+        .createQueryBuilder('wb')
+        .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+        .andWhere('wb.scheduledAt BETWEEN :start AND :end', {
+          start: dayStart.toISOString(),
+          end: dayEnd.toISOString(),
+        })
+        .andWhere('wb.deliveryZoneId IS NOT NULL')
+        .getMany()
+
+      const available = assertDeliverySlotAvailable(
+        scheduledAt,
+        roundTripMinutes,
+        existingDeliveries
+          .filter((booking) => booking.roundTripMinutes != null)
+          .map((booking) => ({
+            scheduledAt: new Date(booking.scheduledAt),
+            roundTripMinutes: booking.roundTripMinutes as number,
+          })),
+      )
+      if (!available) {
+        errorResponse = NextResponse.json(
+          { error: 'Delivery time is not available', code: 'delivery_slot_busy' },
+          { status: 409 },
+        )
+        return
+      }
     }
 
     const stockIssues = await findBookingStockIssues(
@@ -152,10 +205,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return
     }
 
-    const totalAmount = data.items.reduce(
+    const itemsTotal = data.items.reduce(
       (sum, item) => sum + item.retailPriceSnapshot * item.quantity,
       0,
     )
+    const totalAmount = itemsTotal + deliveryFee
 
     const booking = bookingRepo.create({
       publicNumber: generatePublicNumber(),
@@ -166,6 +220,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       scheduledAt,
       locationId,
       customAddressId,
+      deliveryZoneId,
+      deliveryFee,
+      roundTripMinutes,
       items: data.items,
       totalAmount,
       status: 'pending',
@@ -191,6 +248,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       totalAmount,
       locationLabel,
       customAddressLabel,
+      deliveryZoneName,
+      deliveryFee,
       itemsSnapshot: data.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -228,6 +287,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       scheduledAt: savedBooking.scheduledAt,
       location: savedBooking.locationLabel,
       customAddress: savedBooking.customAddressLabel,
+      deliveryZone: savedBooking.deliveryZoneName,
+      deliveryFee: savedBooking.deliveryFee,
       items: savedBooking.itemsSnapshot.map((item) => {
         const product = productMap.get(item.productId)
         return {

@@ -14,18 +14,20 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 interface UseSlotsParams {
   locationId?: string
+  deliveryZoneId?: string
   customAddress?: string
   date?: string
   enabled?: boolean
 }
 
-export function useSlots({ locationId, customAddress, date, enabled = true }: UseSlotsParams) {
+export function useSlots({ locationId, deliveryZoneId, customAddress, date, enabled = true }: UseSlotsParams) {
   const searchParams = new URLSearchParams()
   if (locationId) searchParams.set('locationId', locationId)
+  if (deliveryZoneId) searchParams.set('deliveryZoneId', deliveryZoneId)
   if (customAddress) searchParams.set('customAddress', customAddress)
   if (date) searchParams.set('date', date)
 
-  const shouldFetch = enabled && !!date && (!!locationId || !!customAddress)
+  const shouldFetch = enabled && !!date && (!!locationId || !!deliveryZoneId)
   const url = shouldFetch ? `/api/slots?${searchParams.toString()}` : null
 
   const { data, error, isLoading, mutate } = useSWR<SlotsResponse>(url, fetcher, {
