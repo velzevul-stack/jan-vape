@@ -23,7 +23,6 @@ import {
   type Product,
   type ProductCategory,
   categoryLabels,
-  categoryLabelsShort,
   categoryOrder,
 } from '@/lib/mock-data'
 import { ProductCard } from './ProductCard'
@@ -371,16 +370,33 @@ export function ProductGrid({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-        <div className="relative min-w-0 sm:flex-1">
-          <div className="flex gap-0 overflow-x-auto overscroll-x-contain px-0.5 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <CategoryTab
-              label="Все"
-              shortLabel="Все"
-              icon={<Layers className="h-3.5 w-3.5" />}
-              active={activeCategory === 'all'}
-              onClick={onSelectAll}
-            />
+      <div className="mb-4 space-y-2">
+        <button
+          type="button"
+          onClick={onSelectAll}
+          className={cn(
+            'flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
+            activeCategory === 'all'
+              ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/25'
+              : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
+          )}
+        >
+          <Layers className="h-4 w-4" />
+          <span>Все товары</span>
+          <span
+            className={cn(
+              'rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+              activeCategory === 'all'
+                ? 'bg-text-on-accent/15 text-text-on-accent'
+                : 'bg-text-on-dark/10 text-text-muted',
+            )}
+          >
+            {products.length}
+          </span>
+        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="-mx-1 flex min-w-0 flex-1 gap-0 overflow-x-auto px-1 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categoryOrder.map((cat) => {
               const count = products.filter((p) => p.category === cat).length
               if (count === 0) return null
@@ -388,7 +404,6 @@ export function ProductGrid({
                 <CategoryTab
                   key={cat}
                   label={categoryLabels[cat]}
-                  shortLabel={categoryLabelsShort[cat]}
                   icon={categoryIcons[cat]}
                   active={activeCategory === cat && !activeBrand}
                   onClick={() => onSelectCategory(cat)}
@@ -396,34 +411,30 @@ export function ProductGrid({
               )
             })}
           </div>
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-canvas to-transparent sm:hidden"
-            aria-hidden
-          />
-        </div>
 
-        {hasFilterPanelContent && (
-          <button
-            type="button"
-            onClick={handleFilterButtonClick}
-            className={cn(
-              'inline-flex shrink-0 items-center gap-2 self-end rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors sm:self-auto',
-              showFilters || panelFilterCount > 0
-                ? 'border-accent-primary/50 bg-accent-mist text-accent-soft'
-                : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
-            )}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              {panelFilterCount > 0 ? 'Сбросить' : 'Фильтры'}
-            </span>
-            {panelFilterCount > 0 && (
-              <span className="rounded-md bg-accent-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-text-on-accent">
-                {panelFilterCount}
+          {hasFilterPanelContent && (
+            <button
+              type="button"
+              onClick={handleFilterButtonClick}
+              className={cn(
+                'inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
+                showFilters || panelFilterCount > 0
+                  ? 'border-accent-primary/50 bg-accent-mist text-accent-soft'
+                  : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {panelFilterCount > 0 ? 'Сбросить' : 'Фильтры'}
               </span>
-            )}
-          </button>
-        )}
+              {panelFilterCount > 0 && (
+                <span className="rounded-md bg-accent-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-text-on-accent">
+                  {panelFilterCount}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {activeBrand && (
@@ -654,13 +665,11 @@ export function ProductGrid({
 
 function CategoryTab({
   label,
-  shortLabel,
   icon,
   active,
   onClick,
 }: {
   label: string
-  shortLabel: string
   icon: React.ReactNode
   active: boolean
   onClick: () => void
@@ -670,15 +679,14 @@ function CategoryTab({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1 border-b-2 px-2 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-sm',
+        'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
         active
           ? 'border-accent-primary text-accent-soft'
           : 'border-transparent text-text-muted hover:text-text-on-dark',
       )}
     >
       <span className={active ? 'text-accent-primary' : 'text-text-faint'}>{icon}</span>
-      <span className="sm:hidden">{shortLabel}</span>
-      <span className="hidden sm:inline">{label}</span>
+      {label}
     </button>
   )
 }
