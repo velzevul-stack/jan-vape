@@ -19,7 +19,6 @@ export function StickyCartBar() {
   return (
     <Drawer.Root open={open} onOpenChange={setOpen} shouldScaleBackground>
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border-on-dark bg-canvas/90 backdrop-blur-xl md:hidden">
-        <div className="pointer-events-none absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-accent-primary/60 to-transparent" />
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 pb-[env(safe-area-inset-bottom)]">
           <Drawer.Trigger className="flex flex-1 items-center gap-3 text-left">
             <div className="relative">

@@ -16,6 +16,7 @@ export function CatalogLayout() {
 
   const [activeCategory, setActiveCategory] = useState<ActiveCategory>('all')
   const [activeBrand, setActiveBrand] = useState<string | null>(null)
+  const [catalogOpen, setCatalogOpen] = useState(false)
 
   const handleSelectAll = useCallback(() => {
     setActiveCategory('all')
@@ -42,16 +43,16 @@ export function CatalogLayout() {
           : 'lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[17rem_minmax(0,1fr)] xl:gap-8'
       }
     >
-      <div className="mb-4 lg:mb-0">
-        <CategorySidebar
-          products={products}
-          activeCategory={activeCategory}
-          activeBrand={activeBrand}
-          onSelectAll={handleSelectAll}
-          onSelectCategory={handleSelectCategory}
-          onSelectBrand={handleSelectBrand}
-        />
-      </div>
+      <CategorySidebar
+        products={products}
+        activeCategory={activeCategory}
+        activeBrand={activeBrand}
+        onSelectAll={handleSelectAll}
+        onSelectCategory={handleSelectCategory}
+        onSelectBrand={handleSelectBrand}
+        mobileOpen={catalogOpen}
+        onMobileOpenChange={setCatalogOpen}
+      />
 
       <ProductGrid
         products={products}
@@ -62,6 +63,7 @@ export function CatalogLayout() {
         onSelectAll={handleSelectAll}
         onSelectCategory={handleSelectCategory}
         onSelectBrand={handleSelectBrand}
+        onOpenCatalog={() => setCatalogOpen(true)}
       />
 
       {showCart && (

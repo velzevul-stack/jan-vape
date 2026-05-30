@@ -16,8 +16,8 @@ const RULES: Record<ProductCategory, CategoryFilterRules> = {
   },
   disposable: {
     showTaste: true,
-    showStrength: true,
-    showSpecification: true,
+    showStrength: false,
+    showSpecification: false,
     strengthLabel: 'Крепость (mg)',
   },
   vape: {

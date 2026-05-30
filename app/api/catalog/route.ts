@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getRepo } from '@/src/lib/db'
 import { getAvailabilityMap } from '@/src/lib/availability'
+import { collectStrengthOptions } from '@/lib/catalog/productStrength'
 
 const QuerySchema = z.object({
   locationId: z.string().uuid().optional(),
@@ -81,19 +82,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }))
     .filter((p) => p.availableOnPost > 0)
 
-  const strengthValues = Array.from(
-    new Set(
-      result
-        .filter((p) => p.category === 'liquid' || p.category === 'disposable' || p.category === 'snus')
-        .map((p) => String(p.strength ?? '').trim())
-        .filter((s) => s.length > 0),
-    ),
-  ).sort((a, b) => {
-    const an = parseFloat(a)
-    const bn = parseFloat(b)
-    if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn
-    return a.localeCompare(b)
-  })
+  const strengthValues = collectStrengthOptions(
+    result
+      .filter((p) => p.category === 'liquid' || p.category === 'snus')
+      .map((p) => ({
+        brand: p.brand,
+        strength: p.strength,
+        specification: '',
+        category: p.category as 'liquid' | 'snus',
+      })),
+  ).map(String)
 
   return NextResponse.json({ products: result, strengthValues })
 }

@@ -30,11 +30,6 @@ export function HeroSection() {
           <FeatureRow icon={<Heart className="h-4 w-4" />} text="Подтверждение брони от продавца в Telegram" />
           <FeatureRow icon={<Shield className="h-4 w-4" />} text="Оплата при получении" />
         </div>
-
-        <div
-          className="hero-line divider-accent mt-8 w-full max-w-md"
-          aria-hidden
-        />
       </div>
     </section>
   )

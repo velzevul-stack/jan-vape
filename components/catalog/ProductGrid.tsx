@@ -16,6 +16,7 @@ import {
   Zap,
   ArrowUp,
   Layers,
+  Menu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -23,14 +24,20 @@ import {
   type ProductCategory,
   categoryLabels,
   categoryOrder,
-  parseStrengthMg,
 } from '@/lib/mock-data'
 import { ProductCard } from './ProductCard'
 import { Slider } from '@/components/ui/slider'
 import { mergeFilterRules, slugifyForAnchor } from '@/lib/catalog/filterRules'
+import {
+  collectStrengthOptions,
+  productMatchesStrengthFilter,
+} from '@/lib/catalog/productStrength'
+import {
+  type TasteFilter,
+  getAvailableTasteFilters,
+  productMatchesTasteFilters,
+} from '@/lib/catalog/tasteProfile'
 import type { ActiveCategory } from '@/components/layout/CatalogLayout'
-
-type TasteFilter = 'sweet' | 'sour' | 'cold'
 
 const categoryIcons: Record<ProductCategory, React.ReactNode> = {
   liquid: <Droplet className="h-3.5 w-3.5" />,
@@ -41,9 +48,9 @@ const categoryIcons: Record<ProductCategory, React.ReactNode> = {
 }
 
 const tasteMeta: Record<TasteFilter, { icon: React.ReactNode; label: string }> = {
-  sweet: { icon: <Candy className="h-3.5 w-3.5" />, label: 'Сладкий' },
-  sour: { icon: <Citrus className="h-3.5 w-3.5" />, label: 'Кислый' },
-  cold: { icon: <Snowflake className="h-3.5 w-3.5" />, label: 'Холодный' },
+  sweet: { icon: <Candy className="h-4 w-4" />, label: 'Сладкое' },
+  sour: { icon: <Citrus className="h-4 w-4" />, label: 'Кислое' },
+  cold: { icon: <Snowflake className="h-4 w-4" />, label: 'С холодком' },
 }
 
 export interface ProductGridProps {
@@ -55,6 +62,7 @@ export interface ProductGridProps {
   onSelectAll: () => void
   onSelectCategory: (category: ProductCategory) => void
   onSelectBrand: (category: ProductCategory, brand: string) => void
+  onOpenCatalog?: () => void
 }
 
 interface BrandGroup {
@@ -118,6 +126,7 @@ export function ProductGrid({
   onSelectAll,
   onSelectCategory,
   onSelectBrand,
+  onOpenCatalog,
 }: ProductGridProps) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 200)
@@ -188,17 +197,43 @@ export function ProductGrid({
     })
   }, [priceBounds, priceRange])
 
+  const strengthProducts = useMemo(
+    () => baseFiltered.filter((p) => p.category === 'liquid' || p.category === 'snus'),
+    [baseFiltered],
+  )
+
   const mgOptions = useMemo<number[]>(() => {
     if (!filterRules.showStrength) return []
-    const fromBase = baseFiltered
-      .map((p) => parseStrengthMg(p.strength))
-      .filter((n): n is number => n != null)
-    const fromApi = (strengthValues ?? [])
-      .map((v) => parseStrengthMg(v))
-      .filter((n): n is number => n != null)
-    const combined = new Set<number>([...fromBase, ...fromApi])
-    return Array.from(combined).sort((a, b) => a - b)
-  }, [filterRules.showStrength, baseFiltered, strengthValues])
+    return collectStrengthOptions(strengthProducts, strengthValues ?? [])
+  }, [filterRules.showStrength, strengthProducts, strengthValues])
+
+  const availableTastes = useMemo(
+    () => (filterRules.showTaste ? getAvailableTasteFilters(baseFiltered) : []),
+    [filterRules.showTaste, baseFiltered],
+  )
+
+  const priceFilterActive =
+    priceRange != null &&
+    priceBounds != null &&
+    (priceRange[0] !== priceBounds[0] || priceRange[1] !== priceBounds[1])
+
+  const panelFilterCount =
+    tasteFilters.size + strengthFilters.size + (priceFilterActive ? 1 : 0)
+
+  const resetPanelFilters = () => {
+    setTasteFilters(new Set())
+    setStrengthFilters(new Set())
+    if (priceBounds) setPriceRange(priceBounds)
+    setShowFilters(false)
+  }
+
+  const handleFilterButtonClick = () => {
+    if (showFilters || panelFilterCount > 0) {
+      resetPanelFilters()
+    } else {
+      setShowFilters(true)
+    }
+  }
 
   const filteredProducts = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()
@@ -211,14 +246,11 @@ export function ProductGrid({
       }
 
       if (filterRules.showTaste && tasteFilters.size > 0) {
-        const profile = product.tasteProfile ?? ''
-        const hasMatchingTaste = Array.from(tasteFilters).some((taste) => profile.includes(taste))
-        if (!hasMatchingTaste) return false
+        if (!productMatchesTasteFilters(product, tasteFilters)) return false
       }
 
       if (filterRules.showStrength && strengthFilters.size > 0) {
-        const mg = parseStrengthMg(product.strength)
-        if (mg == null || !strengthFilters.has(mg)) return false
+        if (!productMatchesStrengthFilter(product, strengthFilters)) return false
       }
 
       if (priceRange) {
@@ -243,22 +275,10 @@ export function ProductGrid({
     [filteredProducts, activeCategory],
   )
 
-  const activeFilterCount =
-    (activeCategory !== 'all' ? 1 : 0) +
-    (activeBrand ? 1 : 0) +
-    tasteFilters.size +
-    strengthFilters.size +
-    (priceRange && priceBounds &&
-      (priceRange[0] !== priceBounds[0] || priceRange[1] !== priceBounds[1])
-      ? 1
-      : 0)
-
   const resetAll = () => {
     setSearch('')
     onSelectAll()
-    setTasteFilters(new Set())
-    setStrengthFilters(new Set())
-    setPriceRange(priceBounds)
+    resetPanelFilters()
   }
 
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -310,18 +330,33 @@ export function ProductGrid({
   }
 
   const totalFilteredCount = filteredProducts.length
+  const showTasteSection = filterRules.showTaste && availableTastes.length > 0
+  const showStrengthSection = filterRules.showStrength && mgOptions.length > 0
+  const showPriceSection =
+    priceBounds != null && priceRange != null && priceBounds[0] !== priceBounds[1]
+  const hasFilterPanelContent = showTasteSection || showStrengthSection || showPriceSection
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-6">
-        <div className="group/search relative">
+      <div className="mb-4 flex gap-2">
+        {onOpenCatalog && (
+          <button
+            type="button"
+            onClick={onOpenCatalog}
+            className="inline-flex h-14 shrink-0 items-center gap-2 rounded-xl border border-border-on-dark bg-elevated px-4 text-sm font-medium text-text-on-dark transition-colors hover:border-accent-primary/40 lg:hidden"
+          >
+            <Menu className="h-4 w-4 text-accent-primary" />
+            <span>Каталог</span>
+          </button>
+        )}
+        <div className="group/search relative min-w-0 flex-1">
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted transition-colors group-focus-within/search:text-accent-primary" />
           <input
             type="text"
             placeholder="Бренд, вкус, категория…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-14 w-full rounded-2xl border border-border-on-dark bg-elevated pl-12 pr-12 text-base text-text-on-dark transition-colors placeholder:text-text-faint focus:border-accent-primary/60 focus:bg-card-inner focus:outline-none focus:ring-2 focus:ring-accent-mist"
+            className="h-14 w-full rounded-xl border border-border-on-dark bg-elevated pl-12 pr-12 text-base text-text-on-dark transition-colors placeholder:text-text-faint focus:border-accent-primary/60 focus:bg-card-inner focus:outline-none focus:ring-2 focus:ring-accent-mist"
           />
           {search && (
             <button
@@ -335,50 +370,55 @@ export function ProductGrid({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <CategoryChip
-          label="Все"
-          icon={<Layers className="h-3.5 w-3.5" />}
-          active={activeCategory === 'all'}
-          onClick={onSelectAll}
-          count={products.length}
-        />
-        {categoryOrder.map((cat) => {
-          const count = products.filter((p) => p.category === cat).length
-          if (count === 0) return null
-          return (
-            <CategoryChip
-              key={cat}
-              label={categoryLabels[cat]}
-              icon={categoryIcons[cat]}
-              active={activeCategory === cat && !activeBrand}
-              onClick={() => onSelectCategory(cat)}
-              count={count}
-            />
-          )
-        })}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="-mx-1 flex flex-1 gap-0 overflow-x-auto px-1 pb-px scrollbar-none">
+          <CategoryTab
+            label="Все"
+            icon={<Layers className="h-3.5 w-3.5" />}
+            active={activeCategory === 'all'}
+            onClick={onSelectAll}
+          />
+          {categoryOrder.map((cat) => {
+            const count = products.filter((p) => p.category === cat).length
+            if (count === 0) return null
+            return (
+              <CategoryTab
+                key={cat}
+                label={categoryLabels[cat]}
+                icon={categoryIcons[cat]}
+                active={activeCategory === cat && !activeBrand}
+                onClick={() => onSelectCategory(cat)}
+              />
+            )
+          })}
+        </div>
 
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={cn(
-            'ml-auto inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200',
-            showFilters || activeFilterCount > 0
-              ? 'border-accent-primary/50 bg-accent-mist text-accent-soft'
-              : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
-          )}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          <span className="hidden sm:inline">Фильтры</span>
-          {activeFilterCount > 0 && (
-            <span className="rounded-full bg-accent-primary px-1.5 py-0.5 text-[11px] font-bold text-text-on-accent">
-              {activeFilterCount}
+        {hasFilterPanelContent && (
+          <button
+            type="button"
+            onClick={handleFilterButtonClick}
+            className={cn(
+              'inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
+              showFilters || panelFilterCount > 0
+                ? 'border-accent-primary/50 bg-accent-mist text-accent-soft'
+                : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {panelFilterCount > 0 ? 'Сбросить' : 'Фильтры'}
             </span>
-          )}
-        </button>
+            {panelFilterCount > 0 && (
+              <span className="rounded-md bg-accent-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-text-on-accent">
+                {panelFilterCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {activeBrand && (
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-primary/30 bg-accent-mist px-3 py-1.5 text-sm">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-accent-primary/30 bg-accent-mist/60 px-3 py-1.5 text-sm">
           <span className="text-text-muted">Бренд:</span>
           <span className="font-semibold text-accent-soft">{activeBrand}</span>
           <button
@@ -398,88 +438,66 @@ export function ProductGrid({
         </div>
       )}
 
-      <div
-        className={cn(
-          'overflow-hidden transition-all duration-300 ease-out',
-          showFilters || activeFilterCount > 0
-            ? 'mb-6 max-h-[60rem] opacity-100'
-            : 'mb-0 max-h-0 opacity-0',
-        )}
-      >
-        <div className="space-y-5 rounded-2xl border border-border-on-dark bg-elevated p-4">
-          {filterRules.showTaste && (
-            <div>
-              <h4 className="mb-2 flex items-center gap-1.5 font-display text-[11px] font-bold tracking-[0.2em] text-text-faint">
-                <Candy className="h-3 w-3 text-accent-primary" />
-                ВКУС
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {(['sweet', 'sour', 'cold'] as TasteFilter[]).map((taste) => {
-                  const hasAny = baseFiltered.some((p) =>
-                    (p.tasteProfile ?? '').includes(taste),
-                  )
-                  if (!hasAny) return null
-                  return (
-                    <button
-                      key={taste}
-                      onClick={() => toggleTaste(taste)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200',
-                        tasteFilters.has(taste)
-                          ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/30'
-                          : 'border-border-strong bg-card-inner text-text-on-dark hover:border-accent-primary/40',
-                      )}
-                    >
-                      {tasteMeta[taste].icon}
-                      <span>{tasteMeta[taste].label}</span>
-                    </button>
-                  )
-                })}
+      {showFilters && hasFilterPanelContent && (
+        <div className="mb-6 rounded-xl border border-border-on-dark bg-elevated p-4">
+          {showTasteSection && (
+            <FilterSection title="Вкусовой профиль">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {availableTastes.map((taste) => (
+                  <FilterToggle
+                    key={taste}
+                    active={tasteFilters.has(taste)}
+                    onClick={() => toggleTaste(taste)}
+                    icon={tasteMeta[taste].icon}
+                    label={tasteMeta[taste].label}
+                  />
+                ))}
               </div>
-            </div>
+            </FilterSection>
           )}
 
-          {filterRules.showStrength && mgOptions.length > 0 && (
-            <div>
-              <h4 className="mb-2 flex items-center gap-1.5 font-display text-[11px] font-bold tracking-[0.2em] text-text-faint">
-                <Zap className="h-3 w-3 text-accent-primary" />
-                {filterRules.strengthLabel.toUpperCase()}
-              </h4>
-              <div className="flex flex-wrap gap-2">
+          {showStrengthSection && (
+            <FilterSection
+              title={filterRules.strengthLabel}
+              className={showTasteSection ? 'mt-4 border-t border-border-on-dark pt-4' : undefined}
+            >
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
                 {mgOptions.map((mg) => (
                   <button
                     key={mg}
+                    type="button"
                     onClick={() => toggleStrength(mg)}
                     className={cn(
-                      'inline-flex h-9 min-w-[3.5rem] items-center justify-center rounded-full border px-3 text-sm font-bold tabular-nums transition-all duration-200',
+                      'rounded-lg border py-2 text-sm font-semibold tabular-nums transition-colors',
                       strengthFilters.has(mg)
-                        ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-md shadow-accent-primary/30'
-                        : 'border-border-strong bg-card-inner text-text-on-dark hover:border-accent-primary/40',
+                        ? 'border-accent-primary bg-accent-primary text-text-on-accent'
+                        : 'border-border-on-dark bg-card-inner text-text-on-dark hover:border-accent-primary/40',
                     )}
                   >
                     {mg}
                   </button>
                 ))}
               </div>
-            </div>
+            </FilterSection>
           )}
 
-          {priceBounds && priceRange && priceBounds[0] !== priceBounds[1] && (
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h4 className="flex items-center gap-1.5 font-display text-[11px] font-bold tracking-[0.2em] text-text-faint">
-                  ЦЕНА
-                </h4>
-                <div className="text-xs tabular-nums text-text-muted">
-                  <span className="text-text-on-dark">{priceRange[0]}</span>
-                  {' — '}
-                  <span className="text-text-on-dark">{priceRange[1]}</span>
-                </div>
+          {showPriceSection && (
+            <FilterSection
+              title="Цена, BYN"
+              className={
+                showTasteSection || showStrengthSection
+                  ? 'mt-4 border-t border-border-on-dark pt-4'
+                  : undefined
+              }
+            >
+              <div className="mb-2 flex justify-between text-xs tabular-nums text-text-muted">
+                <span>{priceRange![0]}</span>
+                <span>{priceRange![1]}</span>
               </div>
               <Slider
-                value={priceRange}
-                min={priceBounds[0]}
-                max={priceBounds[1]}
+                value={priceRange!}
+                min={priceBounds![0]}
+                max={priceBounds![1]}
                 step={1}
                 onValueChange={(value) => {
                   if (value.length >= 2) {
@@ -487,20 +505,10 @@ export function ProductGrid({
                   }
                 }}
               />
-            </div>
-          )}
-
-          {activeFilterCount > 0 && (
-            <button
-              onClick={resetAll}
-              className="inline-flex items-center gap-1.5 text-xs text-text-muted underline-offset-2 hover:text-accent-primary hover:underline"
-            >
-              <X className="h-3 w-3" />
-              Сбросить все фильтры
-            </button>
+            </FilterSection>
           )}
         </div>
-      </div>
+      )}
 
       <div className="mb-4 flex items-center justify-between">
         <div className="text-sm text-text-muted">
@@ -511,7 +519,8 @@ export function ProductGrid({
             </span>
           ) : (
             <>
-              Найдено: <span className="font-bold text-text-on-dark tabular-nums">{totalFilteredCount}</span>
+              Найдено:{' '}
+              <span className="font-bold tabular-nums text-text-on-dark">{totalFilteredCount}</span>
             </>
           )}
         </div>
@@ -578,7 +587,7 @@ export function ProductGrid({
                               {brandGroup.brand}
                             </button>
                           </h3>
-                          <span className="rounded-full bg-card-inner px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
+                          <span className="rounded-md bg-card-inner px-2 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
                             {brandGroup.products.length}
                           </span>
                         </header>
@@ -609,10 +618,10 @@ export function ProductGrid({
           </p>
           <button
             onClick={resetAll}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-accent-primary/40 bg-accent-mist px-4 py-2 text-sm font-medium text-accent-soft hover:bg-accent-primary/20"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-accent-primary/40 bg-accent-mist px-4 py-2 text-sm font-medium text-accent-soft hover:bg-accent-primary/20"
           >
             <X className="h-3.5 w-3.5" />
-            Сбросить все фильтры
+            Сбросить всё
           </button>
         </div>
       )}
@@ -624,8 +633,8 @@ export function ProductGrid({
         className={cn(
           'fixed bottom-24 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-accent-primary/40 bg-canvas/90 text-accent-soft shadow-lg shadow-black/30 backdrop-blur-md transition-all duration-200 md:bottom-8 md:right-8',
           showBackToTop
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-2 pointer-events-none',
+            ? 'pointer-events-auto translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-2 opacity-0',
         )}
       >
         <ArrowUp className="h-5 w-5" />
@@ -634,45 +643,77 @@ export function ProductGrid({
   )
 }
 
-function CategoryChip({
+function CategoryTab({
   label,
   icon,
   active,
   onClick,
-  count,
 }: {
   label: string
   icon: React.ReactNode
   active: boolean
   onClick: () => void
-  count: number
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 whitespace-nowrap',
+        'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
         active
-          ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30'
-          : 'border-border-on-dark bg-elevated text-text-on-dark hover:-translate-y-px hover:border-accent-primary/40 hover:bg-card-inner',
+          ? 'border-accent-primary text-accent-soft'
+          : 'border-transparent text-text-muted hover:text-text-on-dark',
       )}
     >
-      <span className={cn('text-current', active ? 'opacity-90' : 'text-accent-primary')}>
-        {icon}
-      </span>
-      <span>{label}</span>
-      {count !== undefined && count > 0 && (
-        <span
-          className={cn(
-            'rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
-            active
-              ? 'bg-text-on-accent/15 text-text-on-accent'
-              : 'bg-text-on-dark/10 text-text-muted',
-          )}
-        >
-          {count}
-        </span>
+      <span className={active ? 'text-accent-primary' : 'text-text-faint'}>{icon}</span>
+      {label}
+    </button>
+  )
+}
+
+function FilterSection({
+  title,
+  children,
+  className,
+}: {
+  title: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={className}>
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+        {title}
+      </h4>
+      {children}
+    </div>
+  )
+}
+
+function FilterToggle({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors',
+        active
+          ? 'border-accent-primary bg-accent-mist text-accent-soft'
+          : 'border-border-on-dark bg-card-inner text-text-on-dark hover:border-accent-primary/30',
       )}
+    >
+      <span className={active ? 'text-accent-primary' : 'text-text-muted'}>{icon}</span>
+      {label}
     </button>
   )
 }

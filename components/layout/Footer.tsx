@@ -1,12 +1,13 @@
 import Link from 'next/link'
-import { AlertTriangle, MapPin, Send, Sparkles } from 'lucide-react'
+import { AlertTriangle, MapPin, Send } from 'lucide-react'
+
+const TELEGRAM_URL = 'https://t.me/Jfjfjir93299392992'
 
 export function Footer() {
   return (
-    <footer className="relative mt-12 border-t border-border-on-dark bg-canvas py-10 pb-28 md:pb-12">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+    <footer className="mt-12 border-t border-border-on-dark bg-canvas py-10 pb-28 md:pb-12">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
-        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-2.5">
               <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-soft via-accent-primary to-accent-ember text-text-on-accent">
@@ -19,7 +20,7 @@ export function Footer() {
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-text-muted">
               Жидкости, одноразки, устройства, снюс. Бронирование онлайн, оплата при получении.
             </p>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border-on-dark bg-elevated px-3 py-2 text-xs text-text-muted">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border-on-dark bg-elevated px-3 py-2 text-xs text-text-muted">
               <MapPin className="h-3.5 w-3.5 text-accent-primary" />
               г. Ивацевичи
             </div>
@@ -31,25 +32,15 @@ export function Footer() {
             <FooterLink href="/">Каталог</FooterLink>
           </FooterCol>
 
-          <FooterCol title="Информация">
-            <FooterLink href="#">О нас</FooterLink>
-            <FooterLink href="#">Контакты</FooterLink>
-            <FooterLink href="#">Политика конфиденциальности</FooterLink>
-          </FooterCol>
-
-          <FooterCol title="Связь">
-            <FooterLink href="#">
+          <FooterCol title="Контакты">
+            <FooterLink href={TELEGRAM_URL} external>
               <Send className="h-3.5 w-3.5" />
-              Telegram канал
-            </FooterLink>
-            <FooterLink href="#">
-              <Sparkles className="h-3.5 w-3.5" />
-              Акции
+              @Jfjfjir93299392992
             </FooterLink>
           </FooterCol>
         </div>
 
-        <div className="flex items-start gap-3 rounded-2xl border border-status-warning/20 bg-status-warning/5 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-status-warning/20 bg-status-warning/5 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-warning" />
           <div>
             <p className="font-display text-sm font-extrabold tracking-wider text-text-on-dark">
@@ -82,12 +73,28 @@ function FooterCol({ title, children }: { title: string; children: React.ReactNo
   )
 }
 
-function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+function FooterLink({
+  href,
+  children,
+  external,
+}: {
+  href: string
+  children: React.ReactNode
+  external?: boolean
+}) {
+  const className =
+    'inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-accent-soft'
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    )
+  }
+
   return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-1.5 text-sm text-text-muted transition-colors hover:text-accent-soft"
-    >
+    <Link href={href} className={className}>
       {children}
     </Link>
   )

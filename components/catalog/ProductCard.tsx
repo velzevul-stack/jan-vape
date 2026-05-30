@@ -6,10 +6,14 @@ import {
   formatPrice,
   categoryLabels,
   productAvailableStock,
-  hasTasteProfile,
   categorySupportsStrength,
-  parseStrengthMg,
 } from '@/lib/mock-data'
+import { getPrimaryProductStrengthMg } from '@/lib/catalog/productStrength'
+import {
+  type TasteFilter,
+  productHasTaste,
+  categorySupportsTasteFilter,
+} from '@/lib/catalog/tasteProfile'
 import { useCart } from '@/lib/context/cart-context'
 import { CompactStepper } from '@/components/ui-custom/Stepper'
 import {
@@ -36,15 +40,25 @@ const categoryIcons: Record<Product['category'], React.ReactNode> = {
   consumable: <Package className="h-3 w-3" />,
 }
 
+const tasteTags: { key: TasteFilter; icon: React.ReactNode; label: string }[] = [
+  { key: 'sweet', icon: <Candy className="h-3 w-3" />, label: 'Сладкий' },
+  { key: 'sour', icon: <Citrus className="h-3 w-3" />, label: 'Кислый' },
+  { key: 'cold', icon: <Snowflake className="h-3 w-3" />, label: 'Холодный' },
+]
+
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem, removeItem, getItemQuantity, updateQuantity } = useCart()
   const quantity = getItemQuantity(product.id)
   const availableStock = productAvailableStock(product)
-  const tasteProfile = product.tasteProfile ?? ''
+  const profile = product.tasteProfile ?? ''
   const showStrength = categorySupportsStrength(product.category)
-  const mg = showStrength ? parseStrengthMg(product.strength) : null
+  const mg = showStrength ? getPrimaryProductStrengthMg(product) : null
+  const showTasteTags = categorySupportsTasteFilter(product.category)
   const isOut = availableStock === 0
   const isLow = availableStock > 0 && availableStock <= 3
+  const visibleTasteTags = showTasteTags
+    ? tasteTags.filter(({ key }) => productHasTaste(profile, key))
+    : []
 
   const handleAdd = () => {
     if (quantity < availableStock) addItem(product, 1)
@@ -89,17 +103,13 @@ export function ProductCard({ product }: ProductCardProps) {
         <p className="mt-1 line-clamp-2 text-sm text-text-muted">{product.flavor}</p>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {hasTasteProfile(tasteProfile, 'sweet') && (
-          <TasteTag icon={<Candy className="h-3 w-3" />} label="Сладкий" />
-        )}
-        {hasTasteProfile(tasteProfile, 'sour') && (
-          <TasteTag icon={<Citrus className="h-3 w-3" />} label="Кислый" />
-        )}
-        {hasTasteProfile(tasteProfile, 'cold') && (
-          <TasteTag icon={<Snowflake className="h-3 w-3" />} label="Холодный" />
-        )}
-      </div>
+      {visibleTasteTags.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {visibleTasteTags.map(({ key, icon, label }) => (
+            <TasteTag key={key} icon={icon} label={label} />
+          ))}
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 border-t border-border-subtle/60 pt-3">
         <div className="min-w-0">

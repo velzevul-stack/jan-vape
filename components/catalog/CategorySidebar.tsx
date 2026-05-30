@@ -10,13 +10,11 @@ import {
   Leaf,
   Package,
   Layers,
-  X,
-  Menu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type Product, type ProductCategory, categoryLabels, categoryOrder } from '@/lib/mock-data'
 import { slugifyForAnchor } from '@/lib/catalog/filterRules'
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 
 const STORAGE_KEY_EXPANDED = 'catalog.sidebar.expanded'
 
@@ -47,6 +45,8 @@ export interface CategorySidebarProps {
   onSelectAll: () => void
   onSelectCategory: (category: ProductCategory) => void
   onSelectBrand: (category: ProductCategory, brand: string) => void
+  mobileOpen?: boolean
+  onMobileOpenChange?: (open: boolean) => void
 }
 
 function buildTree(products: Product[]): CategoryNode[] {
@@ -254,13 +254,18 @@ export function CategorySidebar({
   onSelectAll,
   onSelectCategory,
   onSelectBrand,
+  mobileOpen = false,
+  onMobileOpenChange,
 }: CategorySidebarProps) {
   const tree = useMemo(() => buildTree(products), [products])
   const totalCount = useMemo(() => products.length, [products])
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [hydrated, setHydrated] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const setMobileOpen = (open: boolean) => {
+    onMobileOpenChange?.(open)
+  }
 
   useEffect(() => {
     setExpanded(readExpanded())
@@ -340,53 +345,32 @@ export function CategorySidebar({
         </div>
       </aside>
 
-      <div className="lg:hidden">
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-border-on-dark bg-elevated px-4 text-sm font-medium text-text-on-dark hover:border-accent-primary/40"
-            >
-              <Menu className="h-4 w-4" />
-              <span>Каталог</span>
-              <span className="rounded-full bg-card-inner px-2 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
-                {totalCount}
-              </span>
-            </button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-[88vw] max-w-[20rem] border-r-border-on-dark bg-canvas p-0 sm:w-[20rem]"
-          >
-            <div className="flex items-center justify-between border-b border-border-on-dark px-4 py-4">
-              <SheetTitle className="font-display text-sm font-bold tracking-[0.22em] text-text-on-dark">
-                КАТАЛОГ
-              </SheetTitle>
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-full p-1 text-text-muted hover:bg-card-inner hover:text-text-on-dark"
-                aria-label="Закрыть"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto px-3 py-3">
-              <SidebarContent
-                tree={tree}
-                activeCategory={activeCategory}
-                activeBrand={activeBrand}
-                expanded={expanded}
-                onToggleExpanded={toggleExpanded}
-                onSelectAll={handleSelectAll}
-                onSelectCategory={handleSelectCategory}
-                onSelectBrand={handleSelectBrand}
-                totalCount={totalCount}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton
+          className="w-[88vw] max-w-[20rem] gap-0 border-r-border-on-dark bg-canvas p-0 sm:w-[20rem]"
+        >
+          <div className="border-b border-border-on-dark px-4 py-4 pr-12">
+            <SheetTitle className="font-display text-sm font-bold tracking-[0.22em] text-text-on-dark">
+              КАТАЛОГ
+            </SheetTitle>
+          </div>
+          <div className="overflow-y-auto px-3 py-3">
+            <SidebarContent
+              tree={tree}
+              activeCategory={activeCategory}
+              activeBrand={activeBrand}
+              expanded={expanded}
+              onToggleExpanded={toggleExpanded}
+              onSelectAll={handleSelectAll}
+              onSelectCategory={handleSelectCategory}
+              onSelectBrand={handleSelectBrand}
+              totalCount={totalCount}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

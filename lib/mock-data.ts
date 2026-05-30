@@ -104,11 +104,7 @@ export const categoryOrder: ProductCategory[] = [
   'consumable',
 ]
 
-export const strengthSupportedCategories = new Set<ProductCategory>([
-  'liquid',
-  'disposable',
-  'snus',
-])
+export const strengthSupportedCategories = new Set<ProductCategory>(['liquid', 'snus'])
 
 export function categorySupportsStrength(category: ProductCategory): boolean {
   return strengthSupportedCategories.has(category)
