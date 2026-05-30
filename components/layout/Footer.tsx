@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertTriangle, MapPin, Send } from 'lucide-react'
+import { AlertTriangle, MapPin, Send, Sparkles } from 'lucide-react'
 
 const TELEGRAM_URL = 'https://t.me/Jfjfjir93299392992'
 
@@ -30,6 +30,10 @@ export function Footer() {
             <FooterLink href="/cart">Корзина</FooterLink>
             <FooterLink href="/checkout">Оформление</FooterLink>
             <FooterLink href="/">Каталог</FooterLink>
+            <FooterLink href="/promotions">
+              <Sparkles className="h-3.5 w-3.5" />
+              Скидки
+            </FooterLink>
           </FooterCol>
 
           <FooterCol title="Контакты">
