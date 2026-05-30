@@ -96,6 +96,14 @@ export const categoryLabels: Record<ProductCategory, string> = {
   consumable: 'Расходники',
 }
 
+export const categoryLabelsShort: Record<ProductCategory, string> = {
+  liquid: 'Жижи',
+  disposable: '1раз.',
+  consumable: 'Расход.',
+  vape: 'Вейпы',
+  snus: 'Снюс',
+}
+
 export const categoryOrder: ProductCategory[] = [
   'liquid',
   'disposable',

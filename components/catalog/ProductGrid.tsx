@@ -23,6 +23,7 @@ import {
   type Product,
   type ProductCategory,
   categoryLabels,
+  categoryLabelsShort,
   categoryOrder,
 } from '@/lib/mock-data'
 import { ProductCard } from './ProductCard'
@@ -370,27 +371,35 @@ export function ProductGrid({
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <div className="-mx-1 flex flex-1 gap-0 overflow-x-auto px-1 pb-px scrollbar-none">
-          <CategoryTab
-            label="Все"
-            icon={<Layers className="h-3.5 w-3.5" />}
-            active={activeCategory === 'all'}
-            onClick={onSelectAll}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+        <div className="relative min-w-0 sm:flex-1">
+          <div className="flex gap-0 overflow-x-auto overscroll-x-contain px-0.5 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <CategoryTab
+              label="Все"
+              shortLabel="Все"
+              icon={<Layers className="h-3.5 w-3.5" />}
+              active={activeCategory === 'all'}
+              onClick={onSelectAll}
+            />
+            {categoryOrder.map((cat) => {
+              const count = products.filter((p) => p.category === cat).length
+              if (count === 0) return null
+              return (
+                <CategoryTab
+                  key={cat}
+                  label={categoryLabels[cat]}
+                  shortLabel={categoryLabelsShort[cat]}
+                  icon={categoryIcons[cat]}
+                  active={activeCategory === cat && !activeBrand}
+                  onClick={() => onSelectCategory(cat)}
+                />
+              )
+            })}
+          </div>
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-canvas to-transparent sm:hidden"
+            aria-hidden
           />
-          {categoryOrder.map((cat) => {
-            const count = products.filter((p) => p.category === cat).length
-            if (count === 0) return null
-            return (
-              <CategoryTab
-                key={cat}
-                label={categoryLabels[cat]}
-                icon={categoryIcons[cat]}
-                active={activeCategory === cat && !activeBrand}
-                onClick={() => onSelectCategory(cat)}
-              />
-            )
-          })}
         </div>
 
         {hasFilterPanelContent && (
@@ -398,7 +407,7 @@ export function ProductGrid({
             type="button"
             onClick={handleFilterButtonClick}
             className={cn(
-              'inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-2 self-end rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors sm:self-auto',
               showFilters || panelFilterCount > 0
                 ? 'border-accent-primary/50 bg-accent-mist text-accent-soft'
                 : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
@@ -645,11 +654,13 @@ export function ProductGrid({
 
 function CategoryTab({
   label,
+  shortLabel,
   icon,
   active,
   onClick,
 }: {
   label: string
+  shortLabel: string
   icon: React.ReactNode
   active: boolean
   onClick: () => void
@@ -659,14 +670,15 @@ function CategoryTab({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
+        'inline-flex shrink-0 items-center gap-1 border-b-2 px-2 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:gap-1.5 sm:px-3 sm:py-2.5 sm:text-sm',
         active
           ? 'border-accent-primary text-accent-soft'
           : 'border-transparent text-text-muted hover:text-text-on-dark',
       )}
     >
       <span className={active ? 'text-accent-primary' : 'text-text-faint'}>{icon}</span>
-      {label}
+      <span className="sm:hidden">{shortLabel}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   )
 }
