@@ -72,7 +72,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-3xl border border-border-subtle bg-card p-4 transition-all duration-300',
+        'group relative flex flex-col overflow-hidden rounded-3xl border border-text-on-card/10 bg-card p-4 transition-all duration-300',
         'lift-on-hover',
       )}
     >
@@ -111,7 +111,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 border-t border-border-subtle/60 pt-3">
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 border-t border-text-on-card/10 pt-3">
         <div className="min-w-0">
           <div className="font-display text-2xl font-extrabold tabular-nums text-text-on-card">
             {formatPrice(product.retailPrice)}

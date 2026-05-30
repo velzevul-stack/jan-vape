@@ -760,7 +760,7 @@ function CategorySegment({
       className={cn(
         'flex min-h-[3.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-2 transition-colors sm:min-h-[3rem] sm:px-1',
         active
-          ? 'bg-elevated text-accent-soft shadow-sm ring-1 ring-accent-primary/30'
+          ? 'bg-elevated text-accent-soft shadow-sm ring-1 ring-accent-primary/20'
           : 'text-text-muted hover:bg-elevated/40 hover:text-text-on-dark',
       )}
     >

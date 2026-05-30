@@ -50,14 +50,14 @@ function SlotButton({
       onClick={() => !isDisabled && onSelect()}
       disabled={isDisabled}
       className={cn(
-        'relative flex h-11 w-full min-w-0 items-center justify-center rounded-xl text-[13px] font-semibold tabular-nums transition-colors sm:h-12 sm:text-sm',
+        'relative flex h-11 w-full min-w-0 items-center justify-center rounded-xl border text-[13px] font-semibold tabular-nums transition-all duration-200 sm:h-12 sm:text-sm',
         selected
-          ? 'bg-accent-primary/35 text-accent-soft'
+          ? 'border-accent-primary bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30'
           : isPast
-            ? 'cursor-not-allowed bg-card-inner/40 text-text-faint opacity-40'
+            ? 'cursor-not-allowed border-transparent bg-card-inner/30 text-text-faint opacity-40'
             : hasBookings
-              ? 'bg-card-inner text-text-on-dark hover:bg-accent-mist/40'
-              : 'bg-card-inner text-text-on-dark hover:bg-elevated',
+              ? 'border-accent-primary/30 bg-accent-mist/40 text-text-on-dark hover:-translate-y-0.5 hover:border-accent-primary/50 hover:bg-accent-mist/55 hover:shadow-md hover:shadow-accent-primary/10'
+              : 'border-border-on-dark bg-gradient-to-b from-elevated to-card-inner text-text-on-dark hover:-translate-y-0.5 hover:border-accent-primary/40 hover:from-card-inner hover:to-elevated hover:shadow-md hover:shadow-black/20',
       )}
     >
       <span>{slot.time}</span>
@@ -74,15 +74,15 @@ function SlotLegend() {
   return (
     <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border-on-dark pt-4 text-xs text-text-muted">
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded-md bg-card-inner" />
+        <span className="h-3 w-5 rounded-md border border-border-on-dark bg-gradient-to-b from-elevated to-card-inner" />
         Доступно
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded-md bg-accent-primary/35" />
+        <span className="h-3 w-5 rounded-md border border-accent-primary bg-accent-primary shadow-sm shadow-accent-primary/30" />
         Выбрано
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="relative h-3 w-5 rounded-md bg-card-inner">
+        <span className="relative h-3 w-5 rounded-md border border-accent-primary/30 bg-accent-mist/40">
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-accent-primary" />
         </span>
         Есть бронь

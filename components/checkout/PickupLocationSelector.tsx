@@ -251,7 +251,7 @@ export function PickupLocationSelector({
           <button
             type="button"
             onClick={switchToDelivery}
-            className="flex w-full items-center justify-between rounded-2xl border-2 border-dashed border-border-subtle/30 p-4 text-left text-text-muted transition-colors hover:border-accent-primary/40 hover:text-text-on-dark"
+            className="flex w-full items-center justify-between rounded-2xl border-2 border-dashed border-border-on-dark p-4 text-left text-text-muted transition-colors hover:border-accent-primary/40 hover:text-text-on-dark"
           >
             <span className="flex items-center gap-2 text-sm">
               <Truck className="h-4 w-4" />
@@ -336,7 +336,7 @@ export function PickupLocationSelector({
                     onClick={() => pickZone(zone)}
                     className={cn(
                       'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-elevated',
-                      deliveryZoneHint?.id === zone.id && 'bg-elevated ring-1 ring-accent-primary/30',
+                      deliveryZoneHint?.id === zone.id && 'bg-elevated ring-1 ring-accent-primary/20',
                     )}
                   >
                     <span className="font-medium text-text-on-dark">{zone.name}</span>
@@ -421,7 +421,7 @@ function LocationCard({
         'flex flex-col items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all duration-200',
         selected
           ? 'border-accent-primary bg-accent-primary/10'
-          : 'border-border-subtle/20 bg-card hover:border-accent-primary/40',
+          : 'border-text-on-card/10 bg-card hover:border-accent-primary/40',
       )}
     >
       <div className="flex w-full items-start justify-between gap-2">

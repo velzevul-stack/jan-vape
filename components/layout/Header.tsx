@@ -86,7 +86,7 @@ export function Header() {
                   className="fixed inset-0 z-10 cursor-default bg-canvas/40 backdrop-blur-sm"
                   onClick={() => setIsOpen(false)}
                 />
-                <div className="animate-float-up absolute right-0 top-full z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-border-subtle bg-card p-2 shadow-2xl shadow-black/40">
+                <div className="animate-float-up absolute right-0 top-full z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-text-on-card/10 bg-card p-2 shadow-2xl shadow-black/40">
                   <div className="mb-1 flex items-center justify-between px-3 py-2">
                     <h3 className="font-display text-[11px] font-bold tracking-[0.22em] text-text-faint">
                       ТОЧКИ ВЫДАЧИ

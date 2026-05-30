@@ -221,7 +221,7 @@ function SidebarContent({
                         className={cn(
                           'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
                           isBrandActive
-                            ? 'bg-accent-mist text-accent-soft ring-1 ring-accent-primary/40'
+                            ? 'bg-accent-mist text-accent-soft ring-1 ring-accent-primary/20'
                             : 'text-text-muted hover:bg-card-inner hover:text-text-on-dark',
                         )}
                       >

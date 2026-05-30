@@ -184,7 +184,7 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
                 </div>
               ))}
             </div>
-            <div className="mt-4 space-y-2 border-t border-border-subtle pt-4">
+            <div className="mt-4 space-y-2 border-t border-text-on-card/10 pt-4">
               {(snapshot.deliveryFee ?? 0) > 0 && (
                 <div className="flex items-center justify-between text-sm text-text-muted">
                   <span>Доставка{snapshot.deliveryZoneName ? ` (${snapshot.deliveryZoneName})` : ''}</span>
