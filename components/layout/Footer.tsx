@@ -57,9 +57,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-border-on-dark pt-6 text-xs text-text-faint md:flex-row">
+        <div className="mt-6 border-t border-border-on-dark pt-6 text-center text-xs text-text-faint">
           <span>© {new Date().getFullYear()} Jan-Vape · Все права защищены</span>
-          <span className="font-mono uppercase tracking-[0.2em]">Сделано в Беларуси</span>
         </div>
       </div>
     </footer>

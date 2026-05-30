@@ -170,7 +170,18 @@ export function ProductGrid({
     return Array.from(set)
   }, [baseFiltered])
 
+  const catalogCategories = useMemo(() => {
+    const set = new Set<ProductCategory>()
+    for (const p of products) set.add(p.category)
+    return Array.from(set)
+  }, [products])
+
   const filterRules = useMemo(() => mergeFilterRules(categoriesInBase), [categoriesInBase])
+
+  const catalogFilterRules = useMemo(
+    () => mergeFilterRules(catalogCategories),
+    [catalogCategories],
+  )
 
   const priceBounds = useMemo<[number, number] | null>(() => {
     if (baseFiltered.length === 0) return null
@@ -184,18 +195,29 @@ export function ProductGrid({
     return [Math.floor(min), Math.ceil(max)]
   }, [baseFiltered])
 
+  const syncedPriceRange = useMemo<[number, number] | null>(() => {
+    if (!priceBounds) return null
+    if (!priceRange) return priceBounds
+    const [pmin, pmax] = priceRange
+    if (pmin < priceBounds[0] || pmax > priceBounds[1]) return priceBounds
+    return priceRange
+  }, [priceBounds, priceRange])
+
   useEffect(() => {
     if (!priceBounds) {
-      if (priceRange !== null) setPriceRange(null)
+      setPriceRange(null)
       return
     }
-    setPriceRange((prev) => {
-      if (!prev) return priceBounds
-      const [pmin, pmax] = prev
-      if (pmin < priceBounds[0] || pmax > priceBounds[1]) return priceBounds
-      return prev
-    })
-  }, [priceBounds, priceRange])
+    setPriceRange(priceBounds)
+  }, [activeCategory, activeBrand, priceBounds])
+
+  useEffect(() => {
+    if (activeCategory === 'all' && activeBrand === null) {
+      setTasteFilters(new Set())
+      setStrengthFilters(new Set())
+      setShowFilters(false)
+    }
+  }, [activeCategory, activeBrand])
 
   const strengthProducts = useMemo(
     () => baseFiltered.filter((p) => p.category === 'liquid' || p.category === 'snus'),
@@ -212,13 +234,48 @@ export function ProductGrid({
     [filterRules.showTaste, baseFiltered],
   )
 
+  const catalogStrengthProducts = useMemo(
+    () => products.filter((p) => p.category === 'liquid' || p.category === 'snus'),
+    [products],
+  )
+
+  const catalogPriceBounds = useMemo<[number, number] | null>(() => {
+    if (products.length === 0) return null
+    let min = Number.POSITIVE_INFINITY
+    let max = 0
+    for (const p of products) {
+      if (p.retailPrice < min) min = p.retailPrice
+      if (p.retailPrice > max) max = p.retailPrice
+    }
+    if (!Number.isFinite(min)) return null
+    return [Math.floor(min), Math.ceil(max)]
+  }, [products])
+
+  const catalogHasTasteFilters =
+    catalogFilterRules.showTaste && getAvailableTasteFilters(products).length > 0
+
+  const catalogHasStrengthFilters =
+    catalogFilterRules.showStrength &&
+    collectStrengthOptions(catalogStrengthProducts, strengthValues ?? []).length > 0
+
+  const catalogHasPriceFilter =
+    catalogPriceBounds != null && catalogPriceBounds[0] !== catalogPriceBounds[1]
+
+  const hasFilterPanelContent =
+    catalogHasTasteFilters || catalogHasStrengthFilters || catalogHasPriceFilter
+
+  const priceSectionAvailable =
+    priceBounds != null && priceBounds[0] !== priceBounds[1]
+
   const priceFilterActive =
-    priceRange != null &&
-    priceBounds != null &&
-    (priceRange[0] !== priceBounds[0] || priceRange[1] !== priceBounds[1])
+    priceSectionAvailable &&
+    syncedPriceRange != null &&
+    (syncedPriceRange[0] !== priceBounds![0] || syncedPriceRange[1] !== priceBounds![1])
 
   const panelFilterCount =
-    tasteFilters.size + strengthFilters.size + (priceFilterActive ? 1 : 0)
+    (filterRules.showTaste ? tasteFilters.size : 0) +
+    (filterRules.showStrength ? strengthFilters.size : 0) +
+    (priceSectionAvailable && priceFilterActive ? 1 : 0)
 
   const resetPanelFilters = () => {
     setTasteFilters(new Set())
@@ -253,8 +310,8 @@ export function ProductGrid({
         if (!productMatchesStrengthFilter(product, strengthFilters)) return false
       }
 
-      if (priceRange) {
-        const [pmin, pmax] = priceRange
+      if (syncedPriceRange) {
+        const [pmin, pmax] = syncedPriceRange
         if (product.retailPrice < pmin || product.retailPrice > pmax) return false
       }
 
@@ -265,7 +322,7 @@ export function ProductGrid({
     debouncedSearch,
     tasteFilters,
     strengthFilters,
-    priceRange,
+    syncedPriceRange,
     filterRules.showTaste,
     filterRules.showStrength,
   ])
@@ -275,10 +332,18 @@ export function ProductGrid({
     [filteredProducts, activeCategory],
   )
 
+  const handleSelectAllClick = () => {
+    setTasteFilters(new Set())
+    setStrengthFilters(new Set())
+    setShowFilters(false)
+    if (catalogPriceBounds) setPriceRange(catalogPriceBounds)
+    else setPriceRange(null)
+    onSelectAll()
+  }
+
   const resetAll = () => {
     setSearch('')
-    onSelectAll()
-    resetPanelFilters()
+    handleSelectAllClick()
   }
 
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -337,9 +402,17 @@ export function ProductGrid({
   const totalFilteredCount = filteredProducts.length
   const showTasteSection = filterRules.showTaste && availableTastes.length > 0
   const showStrengthSection = filterRules.showStrength && mgOptions.length > 0
-  const showPriceSection =
-    priceBounds != null && priceRange != null && priceBounds[0] !== priceBounds[1]
-  const hasFilterPanelContent = showTasteSection || showStrengthSection || showPriceSection
+  const showPriceSection = priceSectionAvailable && syncedPriceRange != null
+  const hasOpenFilterPanelContent = showTasteSection || showStrengthSection || showPriceSection
+
+  useEffect(() => {
+    if (showFilters && !hasOpenFilterPanelContent) {
+      setShowFilters(false)
+    }
+  }, [showFilters, hasOpenFilterPanelContent])
+
+  const filtersHighlighted =
+    panelFilterCount > 0 || (showFilters && hasOpenFilterPanelContent)
 
   return (
     <div className="min-w-0 flex-1">
@@ -379,7 +452,7 @@ export function ProductGrid({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={onSelectAll}
+            onClick={handleSelectAllClick}
             className={cn(
               'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
               activeCategory === 'all'
@@ -407,7 +480,7 @@ export function ProductGrid({
               onClick={handleFilterButtonClick}
               className={cn(
                 'inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
-                showFilters || panelFilterCount > 0
+                filtersHighlighted
                   ? 'border-accent-primary bg-accent-mist text-accent-soft'
                   : 'border-border-on-dark bg-elevated text-text-on-dark hover:border-accent-primary/40',
               )}
@@ -424,7 +497,8 @@ export function ProductGrid({
         </div>
 
         <div
-          className="flex gap-0.5 rounded-xl border border-border-on-dark bg-card-inner p-0.5"
+          className="grid gap-0.5 rounded-xl border border-border-on-dark bg-card-inner p-0.5"
+          style={{ gridTemplateColumns: `repeat(${visibleCategories.length}, minmax(0, 1fr))` }}
           role="tablist"
           aria-label="Категории"
         >
@@ -450,7 +524,7 @@ export function ProductGrid({
               if (activeCategory !== 'all') {
                 onSelectCategory(activeCategory)
               } else {
-                onSelectAll()
+                handleSelectAllClick()
               }
             }}
             className="ml-1 text-text-muted hover:text-text-on-dark"
@@ -461,7 +535,7 @@ export function ProductGrid({
         </div>
       )}
 
-      {showFilters && hasFilterPanelContent && (
+      {showFilters && hasOpenFilterPanelContent && (
         <div className="mb-6 rounded-xl border border-border-on-dark bg-elevated p-4">
           {showTasteSection && (
             <FilterSection title="Вкусовой профиль">
@@ -514,11 +588,11 @@ export function ProductGrid({
               }
             >
               <div className="mb-2 flex justify-between text-xs tabular-nums text-text-muted">
-                <span>{priceRange![0]}</span>
-                <span>{priceRange![1]}</span>
+                <span>{syncedPriceRange![0]}</span>
+                <span>{syncedPriceRange![1]}</span>
               </div>
               <Slider
-                value={priceRange!}
+                value={syncedPriceRange!}
                 min={priceBounds![0]}
                 max={priceBounds![1]}
                 step={1}
@@ -684,7 +758,7 @@ function CategorySegment({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-1 py-2.5 transition-colors sm:px-1.5 sm:py-2.5',
+        'flex min-h-[3.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-2 transition-colors sm:min-h-[3rem] sm:px-1',
         active
           ? 'bg-elevated text-accent-soft shadow-sm ring-1 ring-accent-primary/30'
           : 'text-text-muted hover:bg-elevated/40 hover:text-text-on-dark',
@@ -698,7 +772,9 @@ function CategorySegment({
       >
         {icon}
       </span>
-      <span className="text-center text-xs leading-tight font-medium sm:text-sm">{label}</span>
+      <span className="w-full text-center text-[10px] leading-tight font-medium sm:text-xs">
+        {label}
+      </span>
     </button>
   )
 }

@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, MapPin, Check } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, Truck, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice, formatDate } from '@/lib/mock-data'
 import { buildStoreDateTime } from '@/lib/dates'
@@ -22,6 +22,8 @@ import { mutate } from 'swr'
 import { usePickupLocations } from '@/lib/api/hooks/usePickupLocations'
 import { useCatalog } from '@/lib/api/hooks/useCatalog'
 import { fetchCatalogFresh, resolveCartLinesAgainstCatalog } from '@/lib/api/catalogClient'
+import { resolveDeliveryAddress } from '@/lib/api/hooks/useDeliveryZones'
+import { addRecentAddress } from '@/lib/recentAddresses'
 
 const CATALOG_REFRESH_MS = 5_000
 
@@ -52,17 +54,60 @@ export default function CheckoutPage() {
     }
   }, [products, syncWithCatalog])
 
-  const { pickupLocationId, customAddressText, pickupDate, pickupTime, customerName, customerTelegram, comment, deliveryZone, deliveryFee, isLocationSelected, isDeliverySelected, isSlotSelected, resetBooking } = useBooking()
+  const {
+    pickupLocationId,
+    addressDraft,
+    customAddressText,
+    pickupDate,
+    pickupTime,
+    customerName,
+    customerTelegram,
+    comment,
+    deliveryZone,
+    deliveryZoneHint,
+    deliveryFee,
+    isPickupSelected,
+    isDeliverySelected,
+    isDeliveryDraft,
+    isSlotSelected,
+    setDeliveryZoneHint,
+    resetBooking,
+  } = useBooking()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isChangingLocation, setIsChangingLocation] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (pickupLocationId || !addressDraft.trim() || deliveryZoneHint) return
+    let cancelled = false
+    void resolveDeliveryAddress(addressDraft).then((result) => {
+      if (cancelled || !result.zoneId) return
+      setDeliveryZoneHint({
+        id: result.zoneId,
+        name: result.zoneName,
+        deliveryFee: result.deliveryFee,
+        roundTripMinutes: result.roundTripMinutes,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [addressDraft, deliveryZoneHint, pickupLocationId, setDeliveryZoneHint])
+
+  useEffect(() => {
+    if (isDeliverySelected || isPickupSelected) {
+      setIsChangingLocation(false)
+    }
+  }, [isDeliverySelected, isPickupSelected])
+
   const isNameValid = customerName.trim().length >= 2
   const isTelegramValid = isValidTelegramUsername(customerTelegram)
+  const fulfillmentReady = isPickupSelected || isDeliverySelected
   const canSubmit =
-    isLocationSelected && isSlotSelected && isNameValid && isTelegramValid && items.length > 0
-  const orderTotal = totalPrice + deliveryFee
+    fulfillmentReady && isSlotSelected && isNameValid && isTelegramValid && items.length > 0
+  const confirmedDeliveryFee = isDeliverySelected ? deliveryFee : 0
+  const orderTotal = totalPrice + confirmedDeliveryFee
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || isSubmitting || !pickupDate || !pickupTime) return
@@ -147,6 +192,10 @@ export default function CheckoutPage() {
       const resolvedLocation = locations.find(l => l.id === pickupLocationId)
       const locationLabel = resolvedLocation?.name ?? customAddressText ?? null
 
+      if (customAddressText) {
+        addRecentAddress(customAddressText)
+      }
+
       sessionStorage.setItem(
         `confirmation-${bookingNumber}`,
         JSON.stringify({
@@ -162,7 +211,7 @@ export default function CheckoutPage() {
             quantity: i.quantity,
           })),
           total: orderTotal,
-          deliveryFee,
+          deliveryFee: confirmedDeliveryFee,
           deliveryZoneName: deliveryZone?.name ?? null,
         }),
       )
@@ -196,7 +245,8 @@ export default function CheckoutPage() {
     pickupLocationId,
     customAddressText,
     deliveryZone,
-    deliveryFee,
+    orderTotal,
+    confirmedDeliveryFee,
     customerName,
     customerTelegram,
     comment,
@@ -209,7 +259,11 @@ export default function CheckoutPage() {
     router,
   ])
 
-  const locationLabel = customAddressText ?? locations.find(l => l.id === pickupLocationId)?.name ?? null
+  const locationLabel =
+    customAddressText ??
+    (addressDraft.trim() || null) ??
+    locations.find((l) => l.id === pickupLocationId)?.name ??
+    null
 
   if (items.length === 0) {
     return (
@@ -281,13 +335,13 @@ export default function CheckoutPage() {
                     ))}
                   </div>
                   <div className="mt-4 space-y-2 border-t border-border-on-dark pt-4">
-                    {deliveryFee > 0 && (
+                    {isDeliverySelected && confirmedDeliveryFee > 0 && (
                       <div className="flex items-center justify-between text-sm text-text-muted">
                         <span>Доставка{deliveryZone ? ` (${deliveryZone.name})` : ''}</span>
-                        <span className="tabular-nums text-text-on-dark">{formatPrice(deliveryFee)}</span>
+                        <span className="tabular-nums text-text-on-dark">{formatPrice(confirmedDeliveryFee)}</span>
                       </div>
                     )}
-                    {isDeliverySelected && deliveryFee === 0 && (
+                    {isDeliverySelected && confirmedDeliveryFee === 0 && (
                       <div className="flex items-center justify-between text-sm text-text-muted">
                         <span>Доставка{deliveryZone ? ` (${deliveryZone.name})` : ''}</span>
                         <span className="text-status-success">бесплатно</span>
@@ -305,17 +359,30 @@ export default function CheckoutPage() {
 
               <div>
                 <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
-                  ТОЧКА ВЫДАЧИ
+                  {isDeliverySelected && !isPickupSelected ? 'АДРЕС ДОСТАВКИ' : 'МЕСТО ПОЛУЧЕНИЯ'}
                 </h3>
-                {isLocationSelected && !isChangingLocation ? (
+                {(isPickupSelected || isDeliverySelected) && !isChangingLocation ? (
                   <div className="flex items-center gap-4 rounded-3xl border border-accent-primary/30 bg-elevated p-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-primary shadow-lg shadow-accent-primary/30">
-                      <MapPin className="h-5 w-5 text-text-on-accent" />
+                      {isDeliverySelected ? (
+                        <Truck className="h-5 w-5 text-text-on-accent" />
+                      ) : (
+                        <MapPin className="h-5 w-5 text-text-on-accent" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-text-on-dark">
-                        {locationLabel ?? 'Точка выбрана'}
+                        {locationLabel ?? 'Выбрано'}
                       </div>
+                      {isDeliverySelected && deliveryZone && (
+                        <p className="mt-1 text-xs text-text-muted">
+                          {deliveryZone.name}
+                          {' · '}
+                          {confirmedDeliveryFee > 0
+                            ? formatPrice(confirmedDeliveryFee)
+                            : 'бесплатно'}
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -361,9 +428,9 @@ export default function CheckoutPage() {
 
                 <div className="mb-6 space-y-3">
                   <ChecklistItem
-                    checked={isLocationSelected}
-                    label={isDeliverySelected ? 'Доставка' : 'Точка выдачи'}
-                    value={isLocationSelected ? (locationLabel ?? 'Выбрано') : undefined}
+                    checked={isPickupSelected || isDeliveryDraft}
+                    label={isDeliverySelected || isDeliveryDraft ? 'Доставка' : 'Точка выдачи'}
+                    value={(isPickupSelected || isDeliveryDraft) ? (locationLabel ?? 'Выбрано') : undefined}
                   />
                   <ChecklistItem
                     checked={!!pickupDate}
@@ -393,13 +460,13 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {deliveryFee > 0 && (
+                {isDeliverySelected && confirmedDeliveryFee > 0 && (
                   <div className="mb-4 flex items-center justify-between text-sm">
                     <span className="text-text-muted">Доставка</span>
-                    <span className="font-medium tabular-nums text-text-on-dark">{formatPrice(deliveryFee)}</span>
+                    <span className="font-medium tabular-nums text-text-on-dark">{formatPrice(confirmedDeliveryFee)}</span>
                   </div>
                 )}
-                {isDeliverySelected && deliveryFee === 0 && (
+                {isDeliverySelected && confirmedDeliveryFee === 0 && (
                   <div className="mb-4 flex items-center justify-between text-sm">
                     <span className="text-text-muted">Доставка</span>
                     <span className="font-medium text-status-success">бесплатно</span>
@@ -439,7 +506,7 @@ export default function CheckoutPage() {
                 </button>
 
                 <p className="mt-4 text-center text-xs text-text-faint">
-                  Оплата при получении в магазине
+                  Оплата при получении
                 </p>
               </div>
             </div>

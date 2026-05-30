@@ -11,6 +11,8 @@ interface DeliveryZoneSelection {
 
 interface BookingState {
   pickupLocationId: string | null
+  addressDraft: string
+  deliveryZoneHint: DeliveryZoneSelection | null
   customAddressText: string | null
   deliveryZone: DeliveryZoneSelection | null
   pickupDate: string | null
@@ -22,7 +24,10 @@ interface BookingState {
 
 interface BookingContextType extends BookingState {
   setPickupLocation: (locationId: string) => void
-  setDeliveryAddress: (text: string, zone: DeliveryZoneSelection) => void
+  setAddressDraft: (text: string) => void
+  setDeliveryZoneHint: (zone: DeliveryZoneSelection | null) => void
+  confirmDeliveryAddress: (text: string, zone: DeliveryZoneSelection) => void
+  clearDeliveryConfirmation: () => void
   clearLocation: () => void
   setPickupDate: (date: string | null) => void
   setPickupTime: (time: string | null) => void
@@ -32,9 +37,12 @@ interface BookingContextType extends BookingState {
   resetBooking: () => void
   isPickupSelected: boolean
   isDeliverySelected: boolean
+  isDeliveryDraft: boolean
   isLocationSelected: boolean
+  canProceedToCheckout: boolean
   isSlotSelected: boolean
   deliveryFee: number
+  zoneForSlots: DeliveryZoneSelection | null
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined)
@@ -43,6 +51,8 @@ const BOOKING_STORAGE_KEY = 'vapestore-booking'
 
 const initialState: BookingState = {
   pickupLocationId: null,
+  addressDraft: '',
+  deliveryZoneHint: null,
   customAddressText: null,
   deliveryZone: null,
   pickupDate: null,
@@ -57,12 +67,22 @@ function migrateStoredBooking(parsed: Record<string, unknown>): Partial<BookingS
   if (!migrated.customerTelegram && typeof parsed.customerPhone === 'string') {
     migrated.customerTelegram = parsed.customerPhone
   }
+  if (typeof migrated.addressDraft !== 'string') {
+    migrated.addressDraft =
+      typeof parsed.customAddressText === 'string' ? parsed.customAddressText : ''
+  }
   if (parsed.deliveryZoneId && parsed.deliveryZoneName) {
-    migrated.deliveryZone = {
+    const zone: DeliveryZoneSelection = {
       id: String(parsed.deliveryZoneId),
       name: String(parsed.deliveryZoneName),
       deliveryFee: Number(parsed.deliveryFee ?? 0),
       roundTripMinutes: Number(parsed.roundTripMinutes ?? 0),
+    }
+    if (!migrated.deliveryZone) {
+      migrated.deliveryZone = zone
+    }
+    if (!migrated.deliveryZoneHint) {
+      migrated.deliveryZoneHint = zone
     }
   }
   return migrated
@@ -91,10 +111,11 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         BOOKING_STORAGE_KEY,
         JSON.stringify({
           ...state,
-          deliveryZoneId: state.deliveryZone?.id ?? null,
-          deliveryZoneName: state.deliveryZone?.name ?? null,
-          deliveryFee: state.deliveryZone?.deliveryFee ?? 0,
-          roundTripMinutes: state.deliveryZone?.roundTripMinutes ?? null,
+          deliveryZoneId: state.deliveryZone?.id ?? state.deliveryZoneHint?.id ?? null,
+          deliveryZoneName: state.deliveryZone?.name ?? state.deliveryZoneHint?.name ?? null,
+          deliveryFee: state.deliveryZone?.deliveryFee ?? state.deliveryZoneHint?.deliveryFee ?? 0,
+          roundTripMinutes:
+            state.deliveryZone?.roundTripMinutes ?? state.deliveryZoneHint?.roundTripMinutes ?? null,
         }),
       )
     }
@@ -102,12 +123,19 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
   const setPickupLocation = useCallback((locationId: string) => {
     setState((prev) => {
-      if (prev.pickupLocationId === locationId && !prev.customAddressText && !prev.deliveryZone) {
+      if (
+        prev.pickupLocationId === locationId &&
+        !prev.addressDraft &&
+        !prev.deliveryZone &&
+        !prev.deliveryZoneHint
+      ) {
         return prev
       }
       return {
         ...prev,
         pickupLocationId: locationId,
+        addressDraft: '',
+        deliveryZoneHint: null,
         customAddressText: null,
         deliveryZone: null,
         pickupTime: null,
@@ -115,14 +143,41 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  const setDeliveryAddress = useCallback((text: string, zone: DeliveryZoneSelection) => {
+  const setAddressDraft = useCallback((text: string) => {
+    setState((prev) => ({
+      ...prev,
+      pickupLocationId: null,
+      addressDraft: text,
+      customAddressText: null,
+      deliveryZone: null,
+      pickupTime: null,
+    }))
+  }, [])
+
+  const setDeliveryZoneHint = useCallback((zone: DeliveryZoneSelection | null) => {
+    setState((prev) => ({
+      ...prev,
+      deliveryZoneHint: zone,
+    }))
+  }, [])
+
+  const confirmDeliveryAddress = useCallback((text: string, zone: DeliveryZoneSelection) => {
     const trimmed = text.trim()
     setState((prev) => ({
       ...prev,
       pickupLocationId: null,
+      addressDraft: trimmed,
       customAddressText: trimmed || null,
       deliveryZone: zone,
-      pickupTime: null,
+      deliveryZoneHint: zone,
+    }))
+  }, [])
+
+  const clearDeliveryConfirmation = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      customAddressText: null,
+      deliveryZone: null,
     }))
   }, [])
 
@@ -130,6 +185,8 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({
       ...prev,
       pickupLocationId: null,
+      addressDraft: '',
+      deliveryZoneHint: null,
       customAddressText: null,
       deliveryZone: null,
       pickupTime: null,
@@ -166,18 +223,24 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const isPickupSelected = state.pickupLocationId !== null
+  const isDeliveryDraft = state.addressDraft.trim().length >= 3
   const isDeliverySelected =
     state.customAddressText !== null && state.deliveryZone !== null
-  const isLocationSelected = isPickupSelected || isDeliverySelected
+  const isLocationSelected = isPickupSelected || isDeliveryDraft
+  const canProceedToCheckout = isLocationSelected
   const isSlotSelected = state.pickupDate !== null && state.pickupTime !== null
-  const deliveryFee = state.deliveryZone?.deliveryFee ?? 0
+  const deliveryFee = state.deliveryZone?.deliveryFee ?? state.deliveryZoneHint?.deliveryFee ?? 0
+  const zoneForSlots = state.deliveryZone ?? state.deliveryZoneHint
 
   return (
     <BookingContext.Provider
       value={{
         ...state,
         setPickupLocation,
-        setDeliveryAddress,
+        setAddressDraft,
+        setDeliveryZoneHint,
+        confirmDeliveryAddress,
+        clearDeliveryConfirmation,
         clearLocation,
         setPickupDate,
         setPickupTime,
@@ -187,9 +250,12 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         resetBooking,
         isPickupSelected,
         isDeliverySelected,
+        isDeliveryDraft,
         isLocationSelected,
+        canProceedToCheckout,
         isSlotSelected,
         deliveryFee,
+        zoneForSlots,
       }}
     >
       {children}
@@ -204,3 +270,5 @@ export function useBooking() {
   }
   return context
 }
+
+export type { DeliveryZoneSelection }

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/lib/mock-data'
@@ -13,18 +14,34 @@ import { Footer } from '@/components/layout/Footer'
 import { CartItem, EmptyCart } from '@/components/cart/CartItem'
 import { CartProductLines } from '@/components/cart/CartProductLines'
 import { PickupLocationSelector } from '@/components/checkout/PickupLocationSelector'
+import { DeliveryConfirmDialog } from '@/components/checkout/DeliveryConfirmDialog'
 import { PageContainer } from '@/components/layout/PageContainer'
 
 export default function CartPage() {
+  const router = useRouter()
   const { items, totalItems, totalPrice, clearCart, syncWithCatalog, cartLimitMessage } = useCart()
-  const { isLocationSelected } = useBooking()
+  const { canProceedToCheckout, isPickupSelected, isDeliverySelected, isDeliveryDraft } = useBooking()
   const { products } = useCatalog({}, { refreshInterval: 5_000 })
+  const [deliveryConfirmOpen, setDeliveryConfirmOpen] = useState(false)
+  const [selectorCollapse, setSelectorCollapse] = useState(0)
 
   useEffect(() => {
     if (products.length > 0) {
       syncWithCatalog(products)
     }
   }, [products, syncWithCatalog])
+
+  const handleProceed = () => {
+    if (!canProceedToCheckout) return
+    setSelectorCollapse((value) => value + 1)
+    if (isPickupSelected || isDeliverySelected) {
+      router.push('/checkout')
+      return
+    }
+    if (isDeliveryDraft) {
+      setDeliveryConfirmOpen(true)
+    }
+  }
 
   if (items.length === 0) {
     return (
@@ -112,34 +129,37 @@ export default function CartPage() {
 
                 <div className="mb-6">
                   <h3 className="mb-3 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
-                    ТОЧКА ВЫДАЧИ
+                    МЕСТО ПОЛУЧЕНИЯ
                   </h3>
-                  <PickupLocationSelector />
+                  <PickupLocationSelector collapseToken={selectorCollapse} />
                 </div>
 
-                <Link
-                  href={isLocationSelected ? '/checkout' : '#'}
-                  onClick={(e) => !isLocationSelected && e.preventDefault()}
+                <button
+                  type="button"
+                  onClick={handleProceed}
+                  disabled={!canProceedToCheckout}
                   className={cn(
                     'flex h-14 w-full items-center justify-center gap-2 rounded-full',
                     'font-display text-base font-extrabold uppercase tracking-wider transition-all duration-200',
-                    isLocationSelected
+                    canProceedToCheckout
                       ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
                       : 'cursor-not-allowed bg-card-inner text-text-faint',
                   )}
                 >
                   <span>Выбрать дату и время</span>
                   <ArrowRight className="h-5 w-5" />
-                </Link>
+                </button>
 
                 <p className="mt-4 text-center text-xs text-text-faint">
-                  Оплата при получении. Бронь действительна 24 часа.
+                  Оплата при получении.
                 </p>
               </div>
             </aside>
           </div>
         </PageContainer>
       </main>
+
+      <DeliveryConfirmDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen} />
 
       <Footer />
     </div>

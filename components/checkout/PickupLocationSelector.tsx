@@ -1,24 +1,27 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { MapPin, Check, Search, ChevronRight, X, Truck } from 'lucide-react'
+import { MapPin, Search, ChevronRight, X, Truck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/lib/mock-data'
 import { useBooking } from '@/lib/context/booking-context'
-import { usePickupLocations, fetchAddressSuggestions } from '@/lib/api/hooks/usePickupLocations'
+import { usePickupLocations } from '@/lib/api/hooks/usePickupLocations'
 import {
   resolveDeliveryAddress,
   useDeliveryZones,
   type DeliveryResolveResult,
   type DeliveryZoneOption,
 } from '@/lib/api/hooks/useDeliveryZones'
-import type { PickupLocation, PromotedAddress } from '@/lib/mock-data'
+import { filterRecentAddresses } from '@/lib/recentAddresses'
+import { buildAddressWithZone, correctSettlementInAddress } from '@/lib/deliveryAddressText'
+import type { PickupLocation } from '@/lib/mock-data'
 
 type Mode = 'list' | 'delivery'
 
 interface PickupLocationSelectorProps {
   variant?: 'cards' | 'compact'
   className?: string
+  collapseToken?: number
 }
 
 function zoneToSelection(zone: DeliveryZoneOption) {
@@ -33,28 +36,31 @@ function zoneToSelection(zone: DeliveryZoneOption) {
 export function PickupLocationSelector({
   variant = 'cards',
   className,
+  collapseToken = 0,
 }: PickupLocationSelectorProps) {
   const {
     pickupLocationId,
-    customAddressText,
-    deliveryZone,
+    addressDraft,
+    deliveryZoneHint,
     setPickupLocation,
-    setDeliveryAddress,
+    setAddressDraft,
+    setDeliveryZoneHint,
   } = useBooking()
-  const { locations, promotedAddresses, isLoading } = usePickupLocations()
+  const { locations, isLoading } = usePickupLocations()
   const { zones } = useDeliveryZones()
 
   const [mode, setMode] = useState<Mode>(() =>
-    customAddressText != null ? 'delivery' : 'list',
+    addressDraft.trim().length > 0 ? 'delivery' : 'list',
   )
-  const [query, setQuery] = useState(customAddressText ?? '')
+  const [zonePanelOpen, setZonePanelOpen] = useState(true)
   const [zoneFilter, setZoneFilter] = useState('')
-  const [suggestions, setSuggestions] = useState<PromotedAddress[]>([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [pendingResolve, setPendingResolve] = useState<DeliveryResolveResult | null>(null)
+  const [recentMatches, setRecentMatches] = useState<string[]>([])
+  const [showRecent, setShowRecent] = useState(false)
+  const [ambiguousResolve, setAmbiguousResolve] = useState<DeliveryResolveResult | null>(null)
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [isResolving, setIsResolving] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suggestRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const resolveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const filteredZones = useMemo(() => {
@@ -63,80 +69,133 @@ export function PickupLocationSelector({
     return zones.filter((zone) => zone.name.toLowerCase().includes(needle))
   }, [zones, zoneFilter])
 
-  const handleQueryChange = useCallback((value: string) => {
-    setQuery(value)
-    setPendingResolve(null)
-    setResolveError(null)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      if (value.length >= 2) {
-        const results = await fetchAddressSuggestions(value)
-        setSuggestions(results)
-        setShowDropdown(results.length > 0)
-      } else {
-        setSuggestions([])
-        setShowDropdown(false)
+  const applyZoneHint = useCallback(
+    (zone: DeliveryZoneOption, addressText: string) => {
+      setDeliveryZoneHint(zoneToSelection(zone))
+      setAddressDraft(addressText.trim())
+      setAmbiguousResolve(null)
+      setResolveError(null)
+      setShowRecent(false)
+    },
+    [setAddressDraft, setDeliveryZoneHint],
+  )
+
+  const autoResolve = useCallback(
+    async (text: string) => {
+      const corrected = correctSettlementInAddress(text, zones)
+      if (corrected !== text) {
+        setAddressDraft(corrected)
       }
-    }, 200)
-  }, [])
-
-  const applyResolvedDelivery = useCallback((result: DeliveryResolveResult) => {
-    const zone = zones.find((item) => item.id === result.zoneId)
-    if (!zone) return
-    setDeliveryAddress(result.displayAddress, zoneToSelection(zone))
-    setPendingResolve(null)
-    setResolveError(null)
-    setShowDropdown(false)
-  }, [setDeliveryAddress, zones])
-
-  const resolveAndConfirm = useCallback(async (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed) return
-    setIsResolving(true)
-    setResolveError(null)
-    try {
-      const result = await resolveDeliveryAddress(trimmed)
-      if (result.confidence === 'none' || !result.zoneId) {
-        setResolveError('Не удалось определить населённый пункт. Выберите из списка или уточните адрес.')
-        setPendingResolve(null)
+      const trimmed = corrected.trim()
+      if (trimmed.length < 2) {
+        setDeliveryZoneHint(null)
+        setAmbiguousResolve(null)
+        setResolveError(null)
         return
       }
-      if (result.confidence === 'fuzzy' || result.candidates.length > 1) {
-        setPendingResolve(result)
-        return
+      setIsResolving(true)
+      setResolveError(null)
+      try {
+        const result = await resolveDeliveryAddress(trimmed)
+        if (result.confidence === 'none' || !result.zoneId) {
+          setDeliveryZoneHint(null)
+          setAmbiguousResolve(null)
+          return
+        }
+        const zone = zones.find((item) => item.id === result.zoneId)
+        if (!zone) return
+        if (result.confidence === 'fuzzy' && result.candidates.length > 1) {
+          setAmbiguousResolve(result)
+          setDeliveryZoneHint(zoneToSelection(zone))
+          return
+        }
+        setAmbiguousResolve(null)
+        applyZoneHint(zone, trimmed)
+      } catch {
+        setResolveError(null)
+      } finally {
+        setIsResolving(false)
       }
-      applyResolvedDelivery(result)
-    } catch {
-      setResolveError('Не удалось проверить адрес. Попробуйте ещё раз.')
-    } finally {
-      setIsResolving(false)
+    },
+    [applyZoneHint, setDeliveryZoneHint, zones],
+  )
+
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setAddressDraft(value)
+      setAmbiguousResolve(null)
+      setResolveError(null)
+      if (suggestRef.current) clearTimeout(suggestRef.current)
+      if (resolveRef.current) clearTimeout(resolveRef.current)
+      suggestRef.current = setTimeout(() => {
+        const matches = filterRecentAddresses(value)
+        setRecentMatches(matches)
+        setShowRecent(matches.length > 0)
+      }, 150)
+      const delay = /,\s*$/.test(value) ? 120 : 450
+      resolveRef.current = setTimeout(() => {
+        void autoResolve(value)
+      }, delay)
+    },
+    [autoResolve, setAddressDraft],
+  )
+
+  const handleAddressBlur = useCallback(() => {
+    setTimeout(() => setShowRecent(false), 150)
+    if (!addressDraft.trim()) return
+    const corrected = correctSettlementInAddress(addressDraft, zones)
+    if (corrected !== addressDraft) {
+      setAddressDraft(corrected)
+      void autoResolve(corrected)
     }
-  }, [applyResolvedDelivery])
+  }, [addressDraft, autoResolve, setAddressDraft, zones])
 
-  const pickZone = useCallback((zone: DeliveryZoneOption) => {
-    const detail = query.trim()
-    const display = detail && !detail.toLowerCase().includes(zone.name.toLowerCase())
-      ? `${zone.name}, ${detail}`
-      : zone.name
-    setDeliveryAddress(display, zoneToSelection(zone))
-    setPendingResolve(null)
-    setResolveError(null)
-    setMode('delivery')
-  }, [query, setDeliveryAddress])
+  const pickZone = useCallback(
+    (zone: DeliveryZoneOption) => {
+      const next = buildAddressWithZone(addressDraft, zone, zones)
+      applyZoneHint(zone, next)
+      setMode('delivery')
+    },
+    [addressDraft, applyZoneHint, zones],
+  )
+
+  const pickRecentAddress = useCallback(
+    (label: string) => {
+      setAddressDraft(label)
+      setShowRecent(false)
+      void autoResolve(label)
+    },
+    [autoResolve, setAddressDraft],
+  )
 
   const switchToDelivery = useCallback(() => {
     setMode('delivery')
+    setZonePanelOpen(true)
     setTimeout(() => inputRef.current?.focus(), 50)
   }, [])
 
-  const switchToList = useCallback(() => {
-    setMode('list')
-    setQuery('')
+  const clearDeliveryInput = useCallback(() => {
+    setAddressDraft('')
+    setDeliveryZoneHint(null)
     setZoneFilter('')
-    setSuggestions([])
-    setShowDropdown(false)
-    setPendingResolve(null)
+    setRecentMatches([])
+    setShowRecent(false)
+    setAmbiguousResolve(null)
     setResolveError(null)
+    setZonePanelOpen(true)
+    setMode('list')
+  }, [setAddressDraft, setDeliveryZoneHint])
+
+  useEffect(() => {
+    if (collapseToken <= 0) return
+    setZonePanelOpen(false)
+  }, [collapseToken])
+
+  useEffect(() => {
+    return () => {
+      if (suggestRef.current) clearTimeout(suggestRef.current)
+      if (resolveRef.current) clearTimeout(resolveRef.current)
+    }
   }, [])
 
   if (isLoading) {
@@ -156,7 +215,10 @@ export function PickupLocationSelector({
           <button
             key={loc.id}
             type="button"
-            onClick={() => { setPickupLocation(loc.id); setMode('list') }}
+            onClick={() => {
+              setPickupLocation(loc.id)
+              setMode('list')
+            }}
             className={cn(
               'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
               pickupLocationId === loc.id
@@ -186,35 +248,6 @@ export function PickupLocationSelector({
             ))}
           </div>
 
-          {promotedAddresses.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-                Часто используемые адреса
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {promotedAddresses.map((addr) => (
-                  <button
-                    key={addr.id}
-                    type="button"
-                    onClick={() => {
-                      setQuery(addr.label)
-                      void resolveAndConfirm(addr.label)
-                    }}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-all',
-                      customAddressText === addr.label
-                        ? 'border-accent-primary bg-accent-primary/10 text-accent-primary'
-                        : 'border-border-subtle/20 bg-card text-text-muted hover:border-accent-primary/40',
-                    )}
-                  >
-                    <MapPin className="h-3 w-3" />
-                    {addr.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <button
             type="button"
             onClick={switchToDelivery}
@@ -230,92 +263,112 @@ export function PickupLocationSelector({
       ) : (
         <div className="space-y-3">
           <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Truck className="h-4 w-4 text-accent-primary" />
+            <div className="pointer-events-none absolute inset-y-0 left-3 hidden items-center sm:flex">
+              <Truck className="h-4 w-4 text-text-muted" />
             </div>
             <input
               ref={inputRef}
               type="text"
-              placeholder="Например: Майск, ул. Центральная 12"
-              value={query}
+              placeholder="Например: Милейки, ул. Центральная 12"
+              value={addressDraft}
               onChange={(e) => handleQueryChange(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') void resolveAndConfirm(query)
-                if (e.key === 'Escape') switchToList()
+                if (e.key === 'Escape') clearDeliveryInput()
               }}
-              onBlur={() => {
-                setTimeout(() => setShowDropdown(false), 150)
+              onFocus={() => {
+                setZonePanelOpen(true)
+                const matches = filterRecentAddresses(addressDraft)
+                setRecentMatches(matches)
+                setShowRecent(matches.length > 0)
               }}
+              onBlur={handleAddressBlur}
               autoComplete="street-address"
-              className="h-14 w-full rounded-2xl border-2 border-accent-primary/40 bg-card-inner py-3 pl-10 pr-10 text-base text-text-on-dark caret-accent-primary placeholder:text-text-faint focus:border-accent-primary focus:bg-card-inner focus:outline-none"
+              className="h-14 w-full rounded-2xl border border-border-on-dark bg-card-inner py-3 pl-4 pr-10 text-base text-text-on-dark caret-accent-primary placeholder:text-text-faint focus:border-accent-primary/50 focus:outline-none sm:pl-10"
             />
             <button
               type="button"
-              onClick={switchToList}
+              onClick={clearDeliveryInput}
               className="absolute inset-y-0 right-3 flex items-center text-text-muted hover:text-text-on-dark"
+              aria-label="Очистить адрес"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {showDropdown && suggestions.length > 0 && (
+          {isResolving && addressDraft.trim().length >= 2 && (
+            <p className="text-xs text-text-muted">Определяем зону доставки…</p>
+          )}
+
+          {showRecent && recentMatches.length > 0 && (
             <ul className="animate-float-up overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-2xl shadow-black/40">
-              {suggestions.map((s) => (
-                <li key={s.id} className="border-b border-border-on-dark last:border-b-0">
+              {recentMatches.map((label) => (
+                <li key={label} className="border-b border-border-on-dark last:border-b-0">
                   <button
                     type="button"
-                    onMouseDown={() => {
-                      setQuery(s.label)
-                      void resolveAndConfirm(s.label)
-                    }}
+                    onMouseDown={() => pickRecentAddress(label)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-text-on-dark transition-colors hover:bg-card-inner"
                   >
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-accent-primary" />
-                    <span className="truncate">{s.label}</span>
+                    <span className="truncate">{label}</span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="rounded-2xl border border-border-on-dark bg-card-inner p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <Search className="h-4 w-4 text-text-muted" />
-              <input
-                type="text"
-                value={zoneFilter}
-                onChange={(e) => setZoneFilter(e.target.value)}
-                placeholder="Найти населённый пункт..."
-                className="w-full bg-transparent text-sm text-text-on-dark placeholder:text-text-faint focus:outline-none"
-              />
+          {zonePanelOpen && (
+            <div className="rounded-2xl border border-border-on-dark bg-card-inner p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Search className="h-4 w-4 shrink-0 text-text-muted" />
+                <input
+                  type="text"
+                  value={zoneFilter}
+                  onChange={(e) => setZoneFilter(e.target.value)}
+                  placeholder="Населённый пункт..."
+                  className="w-full bg-transparent text-sm text-text-on-dark placeholder:text-text-faint focus:outline-none"
+                />
+              </div>
+              <div className="max-h-44 space-y-1 overflow-y-auto">
+                {filteredZones.map((zone) => (
+                  <button
+                    key={zone.id}
+                    type="button"
+                    onClick={() => pickZone(zone)}
+                    className={cn(
+                      'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-elevated',
+                      deliveryZoneHint?.id === zone.id && 'bg-elevated ring-1 ring-accent-primary/30',
+                    )}
+                  >
+                    <span className="font-medium text-text-on-dark">{zone.name}</span>
+                    <span className="text-xs text-text-muted">
+                      {zone.deliveryFee > 0 ? formatPrice(zone.deliveryFee) : 'бесплатно'}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="max-h-44 space-y-1 overflow-y-auto">
-              {filteredZones.map((zone) => (
-                <button
-                  key={zone.id}
-                  type="button"
-                  onClick={() => pickZone(zone)}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-elevated"
-                >
-                  <span className="font-medium text-text-on-dark">{zone.name}</span>
-                  <span className="text-xs text-text-muted">
-                    {zone.deliveryFee > 0 ? formatPrice(zone.deliveryFee) : 'бесплатно'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
-          {query.trim().length >= 2 && (
-            <button
-              type="button"
-              disabled={isResolving}
-              onClick={() => void resolveAndConfirm(query)}
-              className="flex w-full items-center gap-2 rounded-2xl bg-accent-primary/10 px-4 py-3 text-sm text-accent-primary transition-colors hover:bg-accent-primary/20 disabled:opacity-60"
-            >
-              <Check className="h-4 w-4" />
-              {isResolving ? 'Проверяем адрес…' : `Проверить «${query.trim()}»`}
-            </button>
+          {ambiguousResolve && ambiguousResolve.candidates.length > 1 && (
+            <div className="rounded-2xl border border-accent-primary/30 bg-accent-primary/5 p-3">
+              <p className="mb-2 text-xs text-text-muted">Уточните населённый пункт:</p>
+              <div className="flex flex-wrap gap-2">
+                {ambiguousResolve.candidates.map((candidate) => {
+                  const zone = zones.find((item) => item.id === candidate.zoneId)
+                  if (!zone) return null
+                  return (
+                    <button
+                      key={candidate.zoneId}
+                      type="button"
+                      onClick={() => applyZoneHint(zone, buildAddressWithZone(addressDraft, zone, zones))}
+                      className="rounded-full bg-card-inner px-3 py-1.5 text-xs font-medium text-text-on-dark"
+                    >
+                      {candidate.zoneName}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           )}
 
           {resolveError && (
@@ -324,88 +377,28 @@ export function PickupLocationSelector({
             </div>
           )}
 
-          {pendingResolve && (
-            <div className="space-y-3 rounded-2xl border border-accent-primary/30 bg-accent-primary/5 p-4">
-              <p className="text-sm text-text-on-dark">
-                Доставка: <span className="font-semibold">{pendingResolve.displayAddress}</span>
-              </p>
-              <p className="text-sm text-text-muted">
-                {pendingResolve.deliveryFee > 0
-                  ? `Стоимость доставки: ${formatPrice(pendingResolve.deliveryFee)}`
-                  : 'Доставка бесплатная'}
-              </p>
-              {pendingResolve.candidates.length > 1 && (
-                <div className="flex flex-wrap gap-2">
-                  {pendingResolve.candidates.map((candidate) => {
-                    const zone = zones.find((item) => item.id === candidate.zoneId)
-                    if (!zone) return null
-                    return (
-                      <button
-                        key={candidate.zoneId}
-                        type="button"
-                        onClick={() => {
-                          applyResolvedDelivery({
-                            ...pendingResolve,
-                            zoneId: zone.id,
-                            zoneName: zone.name,
-                            deliveryFee: zone.deliveryFee,
-                            roundTripMinutes: zone.roundTripMinutes,
-                            displayAddress: pendingResolve.addressDetail
-                              ? `${zone.name}, ${pendingResolve.addressDetail}`
-                              : zone.name,
-                            confidence: 'exact',
-                          })
-                        }}
-                        className="rounded-full bg-card-inner px-3 py-1.5 text-xs font-medium text-text-on-dark"
-                      >
-                        {candidate.zoneName}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyResolvedDelivery(pendingResolve)}
-                  className="flex-1 rounded-full bg-accent-primary px-4 py-2 text-sm font-semibold text-text-on-accent"
-                >
-                  Продолжить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPendingResolve(null)}
-                  className="rounded-full bg-card-inner px-4 py-2 text-sm text-text-muted"
-                >
-                  Отменить
-                </button>
-              </div>
-            </div>
+          {deliveryZoneHint && addressDraft.trim().length >= 2 && (
+            <p className="text-xs text-text-muted">
+              Зона: {deliveryZoneHint.name}
+              {' · '}
+              {deliveryZoneHint.deliveryFee > 0
+                ? formatPrice(deliveryZoneHint.deliveryFee)
+                : 'бесплатно'}
+            </p>
           )}
 
           <button
             type="button"
-            onClick={switchToList}
+            onClick={clearDeliveryInput}
             className="text-xs text-text-muted underline-offset-2 hover:underline"
           >
-            ← Самовывоз из магазина
+            ← Точки выдачи
           </button>
         </div>
       )}
 
-      {deliveryZone && customAddressText && mode === 'list' && (
-        <div className="space-y-1 rounded-xl bg-accent-primary/10 px-3 py-2 text-sm text-accent-primary">
-          <div className="flex items-center gap-2">
-            <Truck className="h-3.5 w-3.5" />
-            <span className="flex-1 truncate">{customAddressText}</span>
-            <Check className="h-3.5 w-3.5" />
-          </div>
-          <div className="pl-5 text-xs text-accent-primary/90">
-            {deliveryZone.deliveryFee > 0
-              ? `Доставка: ${formatPrice(deliveryZone.deliveryFee)}`
-              : 'Доставка бесплатная'}
-          </div>
-        </div>
+      {pickupLocationId && mode === 'list' && (
+        <p className="text-xs text-text-muted">Забрать на выбранной точке выдачи</p>
       )}
     </div>
   )
@@ -440,7 +433,6 @@ function LocationCard({
         >
           <MapPin className="h-5 w-5" />
         </div>
-        {selected && <Check className="h-5 w-5 shrink-0 text-accent-primary" aria-hidden />}
       </div>
       <div>
         <div
