@@ -99,9 +99,9 @@ export const categoryLabels: Record<ProductCategory, string> = {
 export const categoryOrder: ProductCategory[] = [
   'liquid',
   'disposable',
+  'consumable',
   'vape',
   'snus',
-  'consumable',
 ]
 
 export const strengthSupportedCategories = new Set<ProductCategory>(['liquid', 'snus'])

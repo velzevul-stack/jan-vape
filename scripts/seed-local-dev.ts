@@ -71,8 +71,10 @@ const PRODUCTS: ProductSeed[] = [
   { externalId: 3006, brand: 'Killa', flavor: 'Pineapple', category: 'snus', strength: '12', tasteProfile: 'тропический', retailPrice: 13, postStock: 12 },
   { externalId: 4001, brand: 'Vaporesso', flavor: 'XROS 3', category: 'vape', strength: '', tasteProfile: '', retailPrice: 85, postStock: 3 },
   { externalId: 4002, brand: 'GeekVape', flavor: 'Aegis Boost', category: 'vape', strength: '', tasteProfile: '', retailPrice: 95, postStock: 2 },
-  { externalId: 5001, brand: 'VapeStore', flavor: 'Coil 0.6', category: 'consumable', strength: '', tasteProfile: '', retailPrice: 5, postStock: 40 },
-  { externalId: 5002, brand: 'VapeStore', flavor: 'Pod empty', category: 'consumable', strength: '', tasteProfile: '', retailPrice: 3, postStock: 50 },
+  { externalId: 5001, brand: 'GeekVape', flavor: 'Испаритель Aegis Boost 0.2', category: 'consumable', strength: '', tasteProfile: '', retailPrice: 13, postStock: 10 },
+  { externalId: 5002, brand: 'Vaporesso', flavor: 'XROS картридж 0.6', category: 'consumable', strength: '', tasteProfile: '', retailPrice: 8, postStock: 15 },
+  { externalId: 5003, brand: 'Vaporesso', flavor: 'XROS картридж 0.8', category: 'consumable', strength: '', tasteProfile: '', retailPrice: 8, postStock: 12 },
+  { externalId: 5004, brand: 'VapeStore', flavor: 'Сменный pod пустой', category: 'consumable', strength: '', tasteProfile: '', retailPrice: 3, postStock: 50 },
 ]
 
 async function main() {
@@ -114,7 +116,7 @@ async function main() {
     const existing = await productRepo.findOne({ where: { externalId: product.externalId } })
     const payload = {
       ...product,
-      isHidden: product.category === 'vape' || product.category === 'consumable',
+      isHidden: product.category === 'vape',
     }
     if (existing) {
       await productRepo.update(existing.id, { ...payload, deletedAt: null })
