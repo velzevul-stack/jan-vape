@@ -15,6 +15,7 @@ const ReservationItemSchema = z.object({
 
 const ReservationSchema = z.object({
   appReservationId: z.number().int().positive(),
+  webBookingId: z.string().uuid().optional(),
   customerName: z.string().min(1).max(255),
   scheduledAt: z.string().datetime().optional(),
   expirationDate: z.number().int().optional(),
@@ -93,9 +94,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
         const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
 
-        const existing = await bookingRepo.findOne({
-          where: { appReservationId: reservation.appReservationId },
-        })
+        const existingByWebId = reservation.webBookingId
+          ? await bookingRepo.findOne({ where: { id: reservation.webBookingId } })
+          : null
+        const existing =
+          existingByWebId ??
+          (await bookingRepo.findOne({
+            where: { appReservationId: reservation.appReservationId },
+          }))
 
         let locationId: string | null = existing?.locationId ?? null
         let customAddressId: string | null = existing?.customAddressId ?? null
@@ -146,7 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const bookingTotal = totalAmount + deliveryFee
 
         if (existing) {
-          await bookingRepo.update(existing.id, {
+          const updateData: Record<string, unknown> = {
             customerName: reservation.customerName.trim(),
             scheduledAt,
             items: mappedItems,
@@ -157,9 +163,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             deliveryZoneId,
             deliveryFee,
             roundTripMinutes,
-            comment: reservation.place ?? existing.comment,
             syncedToAppAt: new Date(),
-          })
+          }
+          if (existing.appReservationId == null) {
+            updateData.appReservationId = reservation.appReservationId
+          }
+          if (reservation.place != null) {
+            updateData.comment = reservation.place
+          }
+          await bookingRepo.update(existing.id, updateData)
         } else {
           await bookingRepo.save(
             bookingRepo.create({
