@@ -17,6 +17,7 @@ const ProductSchema = z.object({
 
 const BodySchema = z.object({
   products: z.array(ProductSchema).min(1),
+  reconcileMissing: z.boolean().default(false),
 })
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -68,12 +69,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }),
     )
 
-    await repo
-      .createQueryBuilder()
-      .update()
-      .set({ isHidden: true })
-      .where('externalId NOT IN (:...ids)', { ids: incomingIds })
-      .execute()
+    if (parsed.data.reconcileMissing) {
+      await repo
+        .createQueryBuilder()
+        .update()
+        .set({ isHidden: true })
+        .where('externalId NOT IN (:...ids)', { ids: incomingIds })
+        .execute()
+    }
 
     revalidatePath('/')
 
