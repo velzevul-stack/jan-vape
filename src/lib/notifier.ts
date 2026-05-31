@@ -3,11 +3,11 @@ import { signRequest } from './auth'
 
 const MAX_ATTEMPTS = 5
 const RETRY_BACKOFF_MS = [
-  60 * 1000,
-  5 * 60 * 1000,
-  30 * 60 * 1000,
-  2 * 60 * 60 * 1000,
-  6 * 60 * 60 * 1000,
+  3 * 1000,
+  15 * 1000,
+  2 * 60 * 1000,
+  15 * 60 * 1000,
+  60 * 60 * 1000,
 ]
 const DELIVER_BATCH_SIZE = 25
 const REQUEST_TIMEOUT_MS = 8000
