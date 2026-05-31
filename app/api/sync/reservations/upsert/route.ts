@@ -12,21 +12,21 @@ const ReservationItemSchema = z.object({
   externalId: z.number().int().positive(),
   quantity: z.number().int().min(1).max(99),
   retailPrice: z.number().min(0),
-  displayName: z.string().max(500).optional(),
+  displayName: z.string().max(500).nullish(),
 })
 
 const ReservationSchema = z.object({
   appReservationId: z.number().int().positive(),
-  webBookingId: z.string().uuid().optional(),
+  webBookingId: z.string().uuid().nullish(),
   customerName: z.string().min(1).max(255),
-  scheduledAt: z.string().datetime().optional(),
-  expirationDate: z.number().int().optional(),
-  place: z.string().max(500).optional(),
-  deliveryZoneName: z.string().max(255).optional(),
-  deliveryAddressDetail: z.string().max(500).optional(),
+  scheduledAt: z.string().datetime().nullish(),
+  expirationDate: z.number().int().nullish(),
+  place: z.string().max(500).nullish(),
+  deliveryZoneName: z.string().max(255).nullish(),
+  deliveryAddressDetail: z.string().max(500).nullish(),
   items: z.array(ReservationItemSchema).min(1),
-  status: z.enum(['pending', 'confirmed', 'cancelled']).optional(),
-  notifyCustomer: z.boolean().optional(),
+  status: z.enum(['pending', 'confirmed', 'cancelled']).nullish(),
+  notifyCustomer: z.boolean().nullish(),
 })
 
 const BodySchema = z.object({
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const bookingTotal = totalAmount + deliveryFee
 
         if (existing) {
-          previousItems = [...existing.items]
+          previousItems = [...(existing.items ?? [])]
           existingBookingId = existing.id
           const updateData: Record<string, unknown> = {
             customerName: reservation.customerName.trim(),
@@ -217,19 +217,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
 
       if (existingBookingId) {
-        const bookingRepo = await getRepo('WebBooking')
-        const booking = await bookingRepo.findOne({
-          where: { id: existingBookingId },
-          relations: ['location', 'customAddress'],
-        })
-        if (booking) {
-          await notifyBookingItemsChangedIfNeeded({
-            booking,
-            previousItems,
-            nextItems: mappedItems,
-            displayNameByExternalId,
-            notifyCustomer,
+        try {
+          const bookingRepo = await getRepo('WebBooking')
+          const booking = await bookingRepo.findOne({
+            where: { id: existingBookingId },
+            relations: { location: true, customAddress: true },
           })
+          if (booking) {
+            await notifyBookingItemsChangedIfNeeded({
+              booking,
+              previousItems,
+              nextItems: mappedItems,
+              displayNameByExternalId,
+              notifyCustomer,
+            })
+          }
+        } catch (err) {
+          console.error('[reservations/upsert] notify items changed failed', err)
         }
       }
 

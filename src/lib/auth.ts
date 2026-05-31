@@ -13,6 +13,12 @@ function pruneNonces() {
   }
 }
 
+function normalizeTimestampMs(raw: number): number {
+  if (raw > 1e17) return Math.floor(raw / 1e6)
+  if (raw > 1e14) return Math.floor(raw / 1e3)
+  return raw
+}
+
 export function verifySyncAuth(req: NextRequest, rawBody: string): boolean {
   const apiKeyHash = process.env.SHOP_API_KEY_HASH
   const hmacSecret = process.env.HMAC_SECRET
@@ -22,11 +28,11 @@ export function verifySyncAuth(req: NextRequest, rawBody: string): boolean {
   const signature = req.headers.get('x-signature') ?? ''
   const timestampStr = req.headers.get('x-timestamp') ?? ''
 
-  const timestamp = parseInt(timestampStr, 10)
-  if (isNaN(timestamp)) return false
+  const timestampRaw = parseInt(timestampStr, 10)
+  if (isNaN(timestampRaw)) return false
 
   const now = Date.now()
-  if (Math.abs(now - timestamp) > TIMESTAMP_WINDOW_MS) return false
+  if (Math.abs(now - normalizeTimestampMs(timestampRaw)) > TIMESTAMP_WINDOW_MS) return false
 
   const keyHash = createHash('sha256').update(shopKey).digest('hex')
   const keyBuf = Buffer.from(keyHash, 'hex')
@@ -35,14 +41,14 @@ export function verifySyncAuth(req: NextRequest, rawBody: string): boolean {
   if (!timingSafeEqual(keyBuf, expectedBuf)) return false
 
   const expected = createHmac('sha256', hmacSecret)
-    .update(`${timestamp}.${rawBody}`)
+    .update(`${timestampStr}.${rawBody}`)
     .digest('hex')
   const expectedBuffer = Buffer.from(expected, 'hex')
   const sigBuffer = Buffer.from(signature, 'hex')
   if (sigBuffer.length !== expectedBuffer.length) return false
   if (!timingSafeEqual(expectedBuffer, sigBuffer)) return false
 
-  const nonceKey = `${shopKey}:${timestamp}`
+  const nonceKey = `${shopKey}:${signature}`
   if (NONCE_CACHE.has(nonceKey)) return false
   if (NONCE_CACHE.size > NONCE_MAX_SIZE) pruneNonces()
   NONCE_CACHE.set(nonceKey, now)
