@@ -6,11 +6,13 @@ import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { entityTableNames, getDataSource, getRepo } from '@/src/lib/db'
 import { normalizeAddress } from '@/src/lib/normalize'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
+import { notifyBookingItemsChangedIfNeeded } from '@/src/lib/bookingItemsChangedNotify'
 
 const ReservationItemSchema = z.object({
   externalId: z.number().int().positive(),
   quantity: z.number().int().min(1).max(99),
   retailPrice: z.number().min(0),
+  displayName: z.string().max(500).optional(),
 })
 
 const ReservationSchema = z.object({
@@ -24,6 +26,7 @@ const ReservationSchema = z.object({
   deliveryAddressDetail: z.string().max(500).optional(),
   items: z.array(ReservationItemSchema).min(1),
   status: z.enum(['pending', 'confirmed', 'cancelled']).optional(),
+  notifyCustomer: z.boolean().optional(),
 })
 
 const BodySchema = z.object({
@@ -87,6 +90,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           : new Date()
 
       const status = (reservation.status ?? 'pending') as WebBookingStatus
+      const notifyCustomer = reservation.notifyCustomer ?? true
+      const displayNameByExternalId = new Map<number, string>()
+      for (const item of reservation.items) {
+        if (item.displayName?.trim()) {
+          displayNameByExternalId.set(item.externalId, item.displayName.trim())
+        }
+      }
+
+      let previousItems: Array<{
+        productId: string
+        quantity: number
+        retailPriceSnapshot: number
+      }> = []
+      let existingBookingId: string | null = null
 
       await ds.transaction(async (txn) => {
         const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
@@ -152,6 +169,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const bookingTotal = totalAmount + deliveryFee
 
         if (existing) {
+          previousItems = [...existing.items]
+          existingBookingId = existing.id
           const updateData: Record<string, unknown> = {
             customerName: reservation.customerName.trim(),
             scheduledAt,
@@ -196,6 +215,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           )
         }
       })
+
+      if (existingBookingId) {
+        const bookingRepo = await getRepo('WebBooking')
+        const booking = await bookingRepo.findOne({
+          where: { id: existingBookingId },
+          relations: ['location', 'customAddress'],
+        })
+        if (booking) {
+          await notifyBookingItemsChangedIfNeeded({
+            booking,
+            previousItems,
+            nextItems: mappedItems,
+            displayNameByExternalId,
+            notifyCustomer,
+          })
+        }
+      }
 
       upserted++
     }

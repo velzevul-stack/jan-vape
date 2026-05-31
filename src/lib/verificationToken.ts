@@ -8,11 +8,22 @@ import { getPublicSiteUrl } from './siteUrl'
 const TOKEN_TTL_MINUTES = 45
 const TOKEN_BYTES = 9
 
+function telegramUserIdKey(telegramUserId: string | number): string {
+  return `@u${String(telegramUserId)}`
+}
+
 export async function createVerificationToken(input: {
-  customerTelegram: string
+  customerTelegram?: string | null
   telegramUserId?: string | number | null
 }): Promise<{ token: string; url: string; expiresAt: Date }> {
-  const normalized = normalizeTelegramUsername(input.customerTelegram)
+  const normalized = input.customerTelegram?.trim()
+    ? normalizeTelegramUsername(input.customerTelegram)
+    : input.telegramUserId === null || input.telegramUserId === undefined
+      ? ''
+      : telegramUserIdKey(input.telegramUserId)
+  if (!normalized) {
+    throw new Error('customerTelegram or telegramUserId required')
+  }
   const lookupKey = telegramLookupKey(normalized)
   const repo = await getRepo('VerificationToken')
   const token = randomBytes(TOKEN_BYTES).toString('base64url')

@@ -4,10 +4,17 @@ import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { createVerificationToken } from '@/src/lib/verificationToken'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 
-const PayloadSchema = z.object({
-  customerTelegram: z.string().min(2).max(255),
-  telegramUserId: z.union([z.string(), z.number()]).optional().nullable(),
-})
+const PayloadSchema = z
+  .object({
+    customerTelegram: z.string().min(2).max(255).optional(),
+    telegramUserId: z.union([z.string(), z.number()]).optional().nullable(),
+  })
+  .refine(
+    (data) =>
+      Boolean(data.customerTelegram?.trim()) ||
+      (data.telegramUserId !== null && data.telegramUserId !== undefined),
+    { message: 'customerTelegram or telegramUserId required' },
+  )
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   return withSyncAuth(req, async (rawBody) => {
@@ -26,7 +33,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const created = await createVerificationToken({
-      customerTelegram: normalizeTelegramUsername(parsed.data.customerTelegram),
+      customerTelegram: parsed.data.customerTelegram
+        ? normalizeTelegramUsername(parsed.data.customerTelegram)
+        : null,
       telegramUserId: parsed.data.telegramUserId ?? null,
     })
 
