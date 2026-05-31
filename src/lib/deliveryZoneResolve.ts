@@ -1,9 +1,21 @@
 export interface DeliveryZoneLike {
   id: string
+  code?: string
   name: string
   aliases: string[]
   roundTripMinutes: number
   deliveryFee: number
+}
+
+export const DEFAULT_DELIVERY_ZONE_CODE = 'ivatevichi'
+
+function getDefaultDeliveryZone(zones: DeliveryZoneLike[]): DeliveryZoneLike | null {
+  return (
+    zones.find((zone) => zone.code === DEFAULT_DELIVERY_ZONE_CODE)
+    ?? zones.find((zone) => normalize(zone.name) === normalize('Ивацевичи'))
+    ?? zones[0]
+    ?? null
+  )
 }
 
 export type DeliveryResolveConfidence = 'exact' | 'fuzzy' | 'none'
@@ -109,6 +121,22 @@ export function resolveDeliveryZone(
   }
 
   if (matches.length === 0) {
+    const defaultZone = getDefaultDeliveryZone(zones)
+    if (defaultZone) {
+      const addressDetail = trimmed
+      return {
+        zoneId: defaultZone.id,
+        zoneName: defaultZone.name,
+        deliveryFee: Number(defaultZone.deliveryFee),
+        roundTripMinutes: defaultZone.roundTripMinutes,
+        addressDetail,
+        displayAddress: addressDetail
+          ? `${defaultZone.name}, ${addressDetail}`
+          : defaultZone.name,
+        confidence: 'none',
+        candidates: [],
+      }
+    }
     return {
       zoneId: '',
       zoneName: '',

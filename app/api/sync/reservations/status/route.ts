@@ -7,6 +7,7 @@ import { getRepo } from '@/src/lib/db'
 import type { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
 import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
 import { markCustomerTrusted } from '@/src/lib/customerStats'
+import { notifyAdminBookingPendingResolved } from '@/src/lib/adminBookingNotify'
 import { enqueueNotification } from '@/src/lib/notifier'
 
 const UpdateSchema = z.object({
@@ -62,6 +63,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             syncedToAppAt: new Date(),
           })
         }
+        await notifyAdminBookingPendingResolved(
+          booking,
+          previousStatus,
+          'cancelled',
+          'app',
+        )
         updated++
         continue
       }
@@ -74,6 +81,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       await repo.update(booking.id, updateData)
       updated++
+
+      await notifyAdminBookingPendingResolved(booking, previousStatus, newStatus, 'app')
 
       if (newStatus === 'completed') {
         try {

@@ -28,6 +28,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const result = resolveDeliveryZone(parsed.data.text, zones.map((zone) => ({
     id: zone.id,
+    code: zone.code,
     name: zone.name,
     aliases: zone.aliases ?? [],
     roundTripMinutes: zone.roundTripMinutes,

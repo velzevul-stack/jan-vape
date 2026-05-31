@@ -7,11 +7,8 @@ import { cn } from '@/lib/utils'
 import { formatPrice } from '@/lib/mock-data'
 import { useBooking } from '@/lib/context/booking-context'
 import { useCart } from '@/lib/context/cart-context'
-import { resolveDeliveryAddress, useDeliveryZones } from '@/lib/api/hooks/useDeliveryZones'
-import {
-  correctSettlementInAddress,
-  resolveZoneFromAddressPrefix,
-} from '@/lib/deliveryAddressText'
+import { useDeliveryZones } from '@/lib/api/hooks/useDeliveryZones'
+import { correctSettlementInAddress, ensureDeliveryAddressWithZone } from '@/lib/deliveryAddressText'
 import {
   Dialog,
   DialogContent,
@@ -38,53 +35,39 @@ export function DeliveryConfirmDialog({ open, onOpenChange }: DeliveryConfirmDia
   const [isConfirming, setIsConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const correctedAddress = useMemo(
-    () => correctSettlementInAddress(addressDraft, zones),
+  const { address: displayAddress, zone: ensuredZone } = useMemo(
+    () => ensureDeliveryAddressWithZone(addressDraft, zones),
     [addressDraft, zones],
   )
 
   const previewZone = useMemo(() => {
     if (deliveryZoneHint) return deliveryZoneHint
-    const matched = resolveZoneFromAddressPrefix(correctedAddress, zones)
-    if (!matched) return null
+    if (!ensuredZone) return null
     return {
-      id: matched.id,
-      name: matched.name,
-      deliveryFee: matched.deliveryFee,
-      roundTripMinutes: matched.roundTripMinutes,
+      id: ensuredZone.id,
+      name: ensuredZone.name,
+      deliveryFee: ensuredZone.deliveryFee,
+      roundTripMinutes: ensuredZone.roundTripMinutes,
     }
-  }, [correctedAddress, deliveryZoneHint, zones])
+  }, [deliveryZoneHint, ensuredZone])
 
   const fee = previewZone?.deliveryFee ?? 0
   const orderTotal = totalPrice + fee
-  const wasCorrected = correctedAddress.trim() !== addressDraft.trim()
+  const wasCorrected = useMemo(() => {
+    const trimmed = addressDraft.trim()
+    if (!trimmed) return false
+    return correctSettlementInAddress(trimmed, zones).trim() !== trimmed
+  }, [addressDraft, zones])
 
   const handleConfirm = async () => {
-    const address = correctedAddress.trim()
-    if (!address) return
+    const address = displayAddress.trim()
+    if (!address || !previewZone) return
     setIsConfirming(true)
     setError(null)
     try {
-      let zone = previewZone
-      if (!zone) {
-        const result = await resolveDeliveryAddress(address)
-        if (!result.zoneId) {
-          setError('Не удалось определить зону доставки. Уточните адрес.')
-          setIsConfirming(false)
-          return
-        }
-        zone = {
-          id: result.zoneId,
-          name: result.zoneName,
-          deliveryFee: result.deliveryFee,
-          roundTripMinutes: result.roundTripMinutes,
-        }
-      }
-      if (wasCorrected) {
-        setAddressDraft(address)
-      }
-      setDeliveryZoneHint(zone)
-      confirmDeliveryAddress(address, zone)
+      setAddressDraft(address)
+      setDeliveryZoneHint(previewZone)
+      confirmDeliveryAddress(address, previewZone)
       onOpenChange(false)
       router.push('/checkout')
     } catch {
@@ -107,7 +90,7 @@ export function DeliveryConfirmDialog({ open, onOpenChange }: DeliveryConfirmDia
             <div className="mt-4 space-y-3">
               <p className="flex items-start gap-2.5 text-sm leading-snug text-text-on-dark">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent-primary" />
-                <span>{correctedAddress.trim()}</span>
+                <span>{displayAddress.trim()}</span>
               </p>
               {wasCorrected && (
                 <p className="text-xs text-text-muted">

@@ -14,7 +14,6 @@ import { Footer } from '@/components/layout/Footer'
 import { DatePickerStrip } from '@/components/checkout/DatePickerStrip'
 import { TimeSlotGrid } from '@/components/checkout/TimeSlotGrid'
 import { ContactForm } from '@/components/checkout/ContactForm'
-import { PickupLocationSelector } from '@/components/checkout/PickupLocationSelector'
 import { CartProductLines } from '@/components/cart/CartProductLines'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { isValidTelegramUsername, normalizeTelegramUsername } from '@/lib/telegram'
@@ -71,11 +70,13 @@ export default function CheckoutPage() {
     isDeliveryDraft,
     isSlotSelected,
     setDeliveryZoneHint,
+    clearDeliveryConfirmation,
+    setPickupDate,
+    setPickupTime,
     resetBooking,
   } = useBooking()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isChangingLocation, setIsChangingLocation] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -96,10 +97,28 @@ export default function CheckoutPage() {
   }, [addressDraft, deliveryZoneHint, pickupLocationId, setDeliveryZoneHint])
 
   useEffect(() => {
-    if (isDeliverySelected || isPickupSelected) {
-      setIsChangingLocation(false)
+    if (items.length === 0) return
+    if (!isPickupSelected && !isDeliverySelected) {
+      router.replace('/cart')
     }
-  }, [isDeliverySelected, isPickupSelected])
+  }, [items.length, isPickupSelected, isDeliverySelected, router])
+
+  const handleChangeFulfillment = useCallback(() => {
+    if (isDeliverySelected) {
+      clearDeliveryConfirmation()
+      setDeliveryZoneHint(null)
+    }
+    setPickupDate(null)
+    setPickupTime(null)
+    router.push('/cart')
+  }, [
+    clearDeliveryConfirmation,
+    isDeliverySelected,
+    router,
+    setDeliveryZoneHint,
+    setPickupDate,
+    setPickupTime,
+  ])
 
   const isNameValid = customerName.trim().length >= 2
   const isTelegramValid = isValidTelegramUsername(customerTelegram)
@@ -361,7 +380,7 @@ export default function CheckoutPage() {
                 <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                   {isDeliverySelected && !isPickupSelected ? 'АДРЕС ДОСТАВКИ' : 'МЕСТО ПОЛУЧЕНИЯ'}
                 </h3>
-                {(isPickupSelected || isDeliverySelected) && !isChangingLocation ? (
+                {(isPickupSelected || isDeliverySelected) ? (
                   <div className="flex items-center gap-4 rounded-3xl border border-accent-primary/30 bg-elevated p-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-primary shadow-lg shadow-accent-primary/30">
                       {isDeliverySelected ? (
@@ -386,15 +405,13 @@ export default function CheckoutPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsChangingLocation(true)}
+                      onClick={handleChangeFulfillment}
                       className="shrink-0 rounded-full bg-card-inner px-3 py-1.5 text-sm font-medium text-accent-soft hover:bg-accent-mist"
                     >
                       Изменить
                     </button>
                   </div>
-                ) : (
-                  <PickupLocationSelector />
-                )}
+                ) : null}
               </div>
 
               <DatePickerStrip />

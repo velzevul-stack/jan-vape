@@ -83,7 +83,7 @@ export function Header() {
                 <button
                   type="button"
                   aria-label="Закрыть"
-                  className="fixed inset-0 z-10 cursor-default bg-canvas/40 backdrop-blur-sm"
+                  className="fixed inset-0 z-10 cursor-default bg-canvas/50"
                   onClick={() => setIsOpen(false)}
                 />
                 <div className="animate-float-up absolute right-0 top-full z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-text-on-card/10 bg-card p-2 shadow-2xl shadow-black/40">

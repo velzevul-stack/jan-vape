@@ -13,7 +13,7 @@ import {
   type DeliveryZoneOption,
 } from '@/lib/api/hooks/useDeliveryZones'
 import { filterRecentAddresses } from '@/lib/recentAddresses'
-import { buildAddressWithZone, correctSettlementInAddress } from '@/lib/deliveryAddressText'
+import { buildAddressWithZone, correctSettlementInAddress, ensureDeliveryAddressWithZone } from '@/lib/deliveryAddressText'
 import type { PickupLocation } from '@/lib/mock-data'
 
 type Mode = 'list' | 'delivery'
@@ -96,7 +96,16 @@ export function PickupLocationSelector({
       setIsResolving(true)
       setResolveError(null)
       try {
-        const result = await resolveDeliveryAddress(trimmed)
+        const ensured = ensureDeliveryAddressWithZone(corrected, zones)
+        if (ensured.zone) {
+          if (ensured.address !== corrected) {
+            setAddressDraft(ensured.address)
+          }
+          setAmbiguousResolve(null)
+          applyZoneHint(ensured.zone, ensured.address)
+          return
+        }
+        const result = await resolveDeliveryAddress(ensured.address || trimmed)
         if (result.confidence === 'none' || !result.zoneId) {
           setDeliveryZoneHint(null)
           setAmbiguousResolve(null)
@@ -110,7 +119,7 @@ export function PickupLocationSelector({
           return
         }
         setAmbiguousResolve(null)
-        applyZoneHint(zone, trimmed)
+        applyZoneHint(zone, result.displayAddress || trimmed)
       } catch {
         setResolveError(null)
       } finally {

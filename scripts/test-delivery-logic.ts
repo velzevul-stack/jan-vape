@@ -26,6 +26,7 @@ assert.equal(
 
 const result = resolveDeliveryZone('заполье, ул. Лесная 3', [{
   id: 'z1',
+  code: 'zapolye',
   name: 'Заполье',
   aliases: ['заполье'],
   roundTripMinutes: 40,
@@ -34,5 +35,28 @@ const result = resolveDeliveryZone('заполье, ул. Лесная 3', [{
 assert.ok(result)
 assert.equal(result?.zoneName, 'Заполье')
 assert.equal(result?.confidence, 'exact')
+
+const defaultResult = resolveDeliveryZone('ул. Ленина 5', [
+  {
+    id: 'z0',
+    code: 'ivatevichi',
+    name: 'Ивацевичи',
+    aliases: ['ивцевичи'],
+    roundTripMinutes: 5,
+    deliveryFee: 0,
+  },
+  {
+    id: 'z1',
+    code: 'zapolye',
+    name: 'Заполье',
+    aliases: ['заполье'],
+    roundTripMinutes: 40,
+    deliveryFee: 15,
+  },
+])
+assert.ok(defaultResult)
+assert.equal(defaultResult?.zoneName, 'Ивацевичи')
+assert.equal(defaultResult?.displayAddress, 'Ивацевичи, ул. Ленина 5')
+assert.equal(defaultResult?.zoneId, 'z0')
 
 console.log('delivery tests passed')

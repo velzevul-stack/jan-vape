@@ -1,5 +1,15 @@
 import type { DeliveryZoneOption } from '@/lib/api/hooks/useDeliveryZones'
 
+export const DEFAULT_DELIVERY_ZONE_CODE = 'ivatevichi'
+
+export function getDefaultDeliveryZone(
+  zones: DeliveryZoneOption[],
+): DeliveryZoneOption | null {
+  return (
+    zones.find((zone) => zone.code === DEFAULT_DELIVERY_ZONE_CODE) ?? zones[0] ?? null
+  )
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -130,4 +140,89 @@ export function resolveZoneFromAddressPrefix(
   const commaIndex = corrected.indexOf(',')
   const prefix = (commaIndex >= 0 ? corrected.slice(0, commaIndex) : corrected).trim()
   return findBestZoneMatch(prefix, zones)
+}
+
+function findZoneExplicitInText(
+  text: string,
+  zones: DeliveryZoneOption[],
+): DeliveryZoneOption | null {
+  const normalizedText = normalize(text)
+  const sorted = [...zones].sort((a, b) => b.name.length - a.name.length)
+  for (const zone of sorted) {
+    const variant = normalize(zone.name)
+    if (variant && normalizedText.includes(variant)) {
+      return zone
+    }
+  }
+  return null
+}
+
+function resolveSettlementPrefixZone(
+  prefix: string,
+  zones: DeliveryZoneOption[],
+): DeliveryZoneOption | null {
+  const matched = findBestZoneMatch(prefix, zones)
+  if (!matched) return null
+  const normPrefix = normalize(prefix)
+  const normName = normalize(matched.name)
+  if (normPrefix === normName) return matched
+  if (levenshtein(normPrefix, normName) <= fuzzyThreshold(normName)) return matched
+  return null
+}
+
+export function ensureDeliveryAddressWithZone(
+  text: string,
+  zones: DeliveryZoneOption[],
+): { address: string; zone: DeliveryZoneOption | null } {
+  const trimmed = text.trim()
+  if (!trimmed || zones.length === 0) {
+    return { address: trimmed, zone: null }
+  }
+
+  const defaultZone = getDefaultDeliveryZone(zones)
+  const corrected = correctSettlementInAddress(trimmed, zones)
+  const explicitInText = findZoneExplicitInText(corrected, zones)
+  if (explicitInText) {
+    const detail = stripKnownZones(corrected, zones)
+    const address = detail ? `${explicitInText.name}, ${detail}` : explicitInText.name
+    return {
+      address: correctSettlementInAddress(address, zones),
+      zone: explicitInText,
+    }
+  }
+
+  const commaIndex = corrected.indexOf(',')
+  const prefix = (commaIndex >= 0 ? corrected.slice(0, commaIndex) : corrected).trim()
+  const prefixZone = resolveSettlementPrefixZone(prefix, zones)
+  if (prefixZone) {
+    return { address: corrected, zone: prefixZone }
+  }
+
+  if (!defaultZone) {
+    return { address: corrected, zone: null }
+  }
+
+  const detail = stripKnownZones(corrected, zones) || corrected
+  return {
+    address: detail ? `${defaultZone.name}, ${detail}` : defaultZone.name,
+    zone: defaultZone,
+  }
+}
+
+export function stripDefaultZoneFromPlaceLabel(
+  label: string,
+  zoneName: string | null | undefined,
+): string {
+  if (!zoneName || zoneName !== 'Ивацевичи') return label
+  const trimmed = label.trim()
+  const zoneLower = zoneName.toLowerCase()
+  const lower = trimmed.toLowerCase()
+  if (lower.startsWith(`${zoneLower},`)) {
+    return trimmed.slice(zoneName.length + 1).trim()
+  }
+  if (lower.startsWith(`${zoneLower} `)) {
+    return trimmed.slice(zoneName.length).trim()
+  }
+  if (lower === zoneLower) return ''
+  return trimmed
 }
