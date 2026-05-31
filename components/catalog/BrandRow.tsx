@@ -5,13 +5,11 @@ import {
   type Product,
   formatPrice,
   productAvailableStock,
-  categorySupportsStrength,
 } from '@/lib/mock-data'
-import { getPrimaryProductStrengthMg } from '@/lib/catalog/productStrength'
 import { productHasTaste } from '@/lib/catalog/tasteProfile'
 import { useCart } from '@/lib/context/cart-context'
 import { CompactStepper } from '@/components/ui-custom/Stepper'
-import { Snowflake, Candy, Citrus, Zap } from 'lucide-react'
+import { Snowflake, Candy, Citrus } from 'lucide-react'
 
 interface BrandRowProps {
   brand: string
@@ -22,7 +20,7 @@ interface BrandRowProps {
 
 function TasteIcons({ profile }: { profile: string }) {
   return (
-    <span className="inline-flex gap-0.5 text-accent-primary">
+    <span className="ml-2 inline-flex gap-0.5 align-middle text-accent-primary">
       {productHasTaste(profile, 'sweet') && <Candy className="h-3 w-3" />}
       {productHasTaste(profile, 'sour') && <Citrus className="h-3 w-3" />}
       {productHasTaste(profile, 'cold') && <Snowflake className="h-3 w-3" />}
@@ -36,8 +34,6 @@ function FlavorRow({ product }: { product: Product }) {
   const available = productAvailableStock(product)
   const isOut = available === 0
   const isLow = available > 0 && available <= 3
-  const showMg = categorySupportsStrength(product.category)
-  const mg = showMg ? getPrimaryProductStrengthMg(product) : null
 
   const handleAdd = () => {
     if (quantity < available) addItem(product, 1)
@@ -65,15 +61,7 @@ function FlavorRow({ product }: { product: Product }) {
         >
           {product.flavor}
         </span>
-        <span className="ml-2 inline-flex items-center gap-1 align-middle">
-          <TasteIcons profile={product.tasteProfile ?? ''} />
-          {mg != null && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-accent-mist px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent-soft">
-              <Zap className="h-2.5 w-2.5" />
-              {mg}
-            </span>
-          )}
-        </span>
+        <TasteIcons profile={product.tasteProfile ?? ''} />
         {isLow && (
           <span className="ml-2 inline-block text-[10px] font-medium text-status-warning">
             {available} шт.
