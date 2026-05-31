@@ -12,7 +12,6 @@ import { useCatalog } from '@/lib/api/hooks/useCatalog'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { CartItem, EmptyCart } from '@/components/cart/CartItem'
-import { CartProductLines } from '@/components/cart/CartProductLines'
 import { PickupLocationSelector } from '@/components/checkout/PickupLocationSelector'
 import { DeliveryConfirmDialog } from '@/components/checkout/DeliveryConfirmDialog'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -103,21 +102,6 @@ export default function CartPage() {
 
             <aside className="lg:sticky lg:top-[6rem] lg:self-start">
               <div className="surface-card rounded-3xl p-6">
-                <div className="mb-4 space-y-3 border-b border-border-on-dark pb-4">
-                  {items.map((item) => (
-                    <div key={item.product.id} className="flex items-start justify-between gap-3 text-sm">
-                      <CartProductLines
-                        product={item.product}
-                        quantity={item.quantity}
-                        brandClassName="text-sm font-medium"
-                        flavorClassName="text-xs"
-                      />
-                      <span className="shrink-0 font-medium tabular-nums text-text-on-dark">
-                        {formatPrice(item.product.retailPrice * item.quantity)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-display text-base font-bold tracking-wider text-text-muted">
                     ИТОГО
