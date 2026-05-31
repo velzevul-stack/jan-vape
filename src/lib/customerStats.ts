@@ -263,10 +263,13 @@ export async function listCustomers(options: {
   limit?: number
   offset?: number
   search?: string | null
+  trustLevel?: TrustLevel | 'all' | null
 }): Promise<{ customers: CustomerListItem[]; total: number }> {
   const limit = Math.min(Math.max(options.limit ?? 10, 1), 50)
   const offset = Math.max(options.offset ?? 0, 0)
   const search = options.search?.trim().toLowerCase() ?? ''
+  const trustFilter =
+    options.trustLevel && options.trustLevel !== 'all' ? options.trustLevel : null
 
   const customerRepo = await getRepo('TelegramCustomer')
   const qb = customerRepo.createQueryBuilder('tc')
@@ -275,15 +278,10 @@ export async function listCustomers(options: {
     qb.where('LOWER(tc.telegramUsername) LIKE :search', { search: `%${search}%` })
   }
 
-  const total = await qb.getCount()
-  const rows = await qb
-    .orderBy('tc.updatedAt', 'DESC')
-    .skip(offset)
-    .take(limit)
-    .getMany()
+  const rows = await qb.orderBy('tc.updatedAt', 'DESC').getMany()
 
   if (rows.length === 0) {
-    return { customers: [], total }
+    return { customers: [], total: 0 }
   }
 
   const lookupKeys = rows.map((row) => row.telegramUsername)
@@ -304,7 +302,7 @@ export async function listCustomers(options: {
 
   const salesByTelegram = await salesCompletedCountByTelegram(lookupKeys)
 
-  const customers = rows.map((row) => {
+  let customers = rows.map((row) => {
     const history = computeBookingHistoryStats(bookingsByTelegram.get(row.telegramUsername) ?? [])
     const salesCompletedCount = salesByTelegram.get(row.telegramUsername) ?? 0
     const completedCount = history.completedCount + salesCompletedCount
@@ -341,7 +339,14 @@ export async function listCustomers(options: {
     }
   })
 
-  return { customers, total }
+  if (trustFilter) {
+    customers = customers.filter((customer) => customer.stats.trustLevel === trustFilter)
+  }
+
+  const total = customers.length
+  const page = customers.slice(offset, offset + limit)
+
+  return { customers: page, total }
 }
 
 export async function getCustomerById(customerId: string): Promise<CustomerListItem | null> {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { MapPin, Search, ChevronRight, X, Truck } from 'lucide-react'
+import { MapPin, Search, ChevronRight, X, Truck, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/lib/mock-data'
 import { useBooking } from '@/lib/context/booking-context'
@@ -13,7 +13,12 @@ import {
   type DeliveryZoneOption,
 } from '@/lib/api/hooks/useDeliveryZones'
 import { filterRecentAddresses } from '@/lib/recentAddresses'
-import { buildAddressWithZone, correctSettlementInAddress, ensureDeliveryAddressWithZone } from '@/lib/deliveryAddressText'
+import {
+  composeDeliveryAddress,
+  ensureDeliveryAddressWithZone,
+  extractAddressDetail,
+  getDefaultDeliveryZone,
+} from '@/lib/deliveryAddressText'
 import type { PickupLocation } from '@/lib/mock-data'
 
 type Mode = 'list' | 'delivery'
@@ -50,9 +55,9 @@ export function PickupLocationSelector({
   const { zones } = useDeliveryZones()
 
   const [mode, setMode] = useState<Mode>(() =>
-    addressDraft.trim().length > 0 ? 'delivery' : 'list',
+    addressDraft.trim().length > 0 || deliveryZoneHint ? 'delivery' : 'list',
   )
-  const [zonePanelOpen, setZonePanelOpen] = useState(true)
+  const [zonePanelOpen, setZonePanelOpen] = useState(() => !deliveryZoneHint)
   const [zoneFilter, setZoneFilter] = useState('')
   const [recentMatches, setRecentMatches] = useState<string[]>([])
   const [showRecent, setShowRecent] = useState(false)
@@ -60,8 +65,8 @@ export function PickupLocationSelector({
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [isResolving, setIsResolving] = useState(false)
   const suggestRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const resolveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const migratedRef = useRef(false)
 
   const filteredZones = useMemo(() => {
     const needle = zoneFilter.trim().toLowerCase()
@@ -69,24 +74,21 @@ export function PickupLocationSelector({
     return zones.filter((zone) => zone.name.toLowerCase().includes(needle))
   }, [zones, zoneFilter])
 
-  const applyZoneHint = useCallback(
-    (zone: DeliveryZoneOption, addressText: string) => {
+  const applyZoneSelection = useCallback(
+    (zone: DeliveryZoneOption, detail: string) => {
       setDeliveryZoneHint(zoneToSelection(zone))
-      setAddressDraft(addressText.trim())
+      setAddressDraft(detail.trim())
       setAmbiguousResolve(null)
       setResolveError(null)
       setShowRecent(false)
+      setZonePanelOpen(false)
     },
     [setAddressDraft, setDeliveryZoneHint],
   )
 
-  const autoResolve = useCallback(
+  const autoResolveLegacyAddress = useCallback(
     async (text: string) => {
-      const corrected = correctSettlementInAddress(text, zones)
-      if (corrected !== text) {
-        setAddressDraft(corrected)
-      }
-      const trimmed = corrected.trim()
+      const trimmed = text.trim()
       if (trimmed.length < 2) {
         setDeliveryZoneHint(null)
         setAmbiguousResolve(null)
@@ -96,16 +98,15 @@ export function PickupLocationSelector({
       setIsResolving(true)
       setResolveError(null)
       try {
-        const ensured = ensureDeliveryAddressWithZone(corrected, zones)
+        const ensured = ensureDeliveryAddressWithZone(trimmed, zones)
         if (ensured.zone) {
-          if (ensured.address !== corrected) {
-            setAddressDraft(ensured.address)
-          }
-          setAmbiguousResolve(null)
-          applyZoneHint(ensured.zone, ensured.address)
+          applyZoneSelection(
+            ensured.zone,
+            extractAddressDetail(ensured.address, ensured.zone, zones),
+          )
           return
         }
-        const result = await resolveDeliveryAddress(ensured.address || trimmed)
+        const result = await resolveDeliveryAddress(trimmed)
         if (result.confidence === 'none' || !result.zoneId) {
           setDeliveryZoneHint(null)
           setAmbiguousResolve(null)
@@ -119,69 +120,83 @@ export function PickupLocationSelector({
           return
         }
         setAmbiguousResolve(null)
-        applyZoneHint(zone, result.displayAddress || trimmed)
+        applyZoneSelection(
+          zone,
+          extractAddressDetail(result.displayAddress || trimmed, zone, zones),
+        )
       } catch {
         setResolveError(null)
       } finally {
         setIsResolving(false)
       }
     },
-    [applyZoneHint, setDeliveryZoneHint, zones],
+    [applyZoneSelection, setDeliveryZoneHint, zones],
   )
 
-  const handleQueryChange = useCallback(
+  const handleDetailChange = useCallback(
     (value: string) => {
       setAddressDraft(value)
       setAmbiguousResolve(null)
       setResolveError(null)
       if (suggestRef.current) clearTimeout(suggestRef.current)
-      if (resolveRef.current) clearTimeout(resolveRef.current)
       suggestRef.current = setTimeout(() => {
-        const matches = filterRecentAddresses(value)
+        const query = deliveryZoneHint
+          ? composeDeliveryAddress(deliveryZoneHint.name, value)
+          : value
+        const matches = filterRecentAddresses(query)
         setRecentMatches(matches)
         setShowRecent(matches.length > 0)
       }, 150)
-      const delay = /,\s*$/.test(value) ? 120 : 450
-      resolveRef.current = setTimeout(() => {
-        void autoResolve(value)
-      }, delay)
     },
-    [autoResolve, setAddressDraft],
+    [deliveryZoneHint, setAddressDraft],
   )
-
-  const handleAddressBlur = useCallback(() => {
-    setTimeout(() => setShowRecent(false), 150)
-    if (!addressDraft.trim()) return
-    const corrected = correctSettlementInAddress(addressDraft, zones)
-    if (corrected !== addressDraft) {
-      setAddressDraft(corrected)
-      void autoResolve(corrected)
-    }
-  }, [addressDraft, autoResolve, setAddressDraft, zones])
 
   const pickZone = useCallback(
     (zone: DeliveryZoneOption) => {
-      const next = buildAddressWithZone(addressDraft, zone, zones)
-      applyZoneHint(zone, next)
+      const detail = extractAddressDetail(addressDraft, zone, zones)
+      applyZoneSelection(zone, detail)
       setMode('delivery')
+      setTimeout(() => inputRef.current?.focus(), 50)
     },
-    [addressDraft, applyZoneHint, zones],
+    [addressDraft, applyZoneSelection, zones],
   )
 
   const pickRecentAddress = useCallback(
     (label: string) => {
-      setAddressDraft(label)
       setShowRecent(false)
-      void autoResolve(label)
+      const ensured = ensureDeliveryAddressWithZone(label, zones)
+      if (ensured.zone) {
+        applyZoneSelection(
+          ensured.zone,
+          extractAddressDetail(ensured.address, ensured.zone, zones),
+        )
+        return
+      }
+      void autoResolveLegacyAddress(label)
     },
-    [autoResolve, setAddressDraft],
+    [applyZoneSelection, autoResolveLegacyAddress, zones],
   )
 
   const switchToDelivery = useCallback(() => {
     setMode('delivery')
-    setZonePanelOpen(true)
-    setTimeout(() => inputRef.current?.focus(), 50)
-  }, [])
+    if (!deliveryZoneHint && zones.length > 0) {
+      const defaultZone = getDefaultDeliveryZone(zones)
+      if (defaultZone) {
+        const detail = addressDraft.trim()
+          ? extractAddressDetail(addressDraft, defaultZone, zones)
+          : ''
+        applyZoneSelection(defaultZone, detail)
+        setTimeout(() => inputRef.current?.focus(), 50)
+        return
+      }
+    }
+    setZonePanelOpen(!deliveryZoneHint)
+    setTimeout(() => {
+      if (deliveryZoneHint) {
+        inputRef.current?.focus()
+      }
+    }, 50)
+  }, [addressDraft, applyZoneSelection, deliveryZoneHint, zones])
 
   const clearDeliveryInput = useCallback(() => {
     setAddressDraft('')
@@ -196,6 +211,52 @@ export function PickupLocationSelector({
   }, [setAddressDraft, setDeliveryZoneHint])
 
   useEffect(() => {
+    if (migratedRef.current || zones.length === 0) return
+    const trimmed = addressDraft.trim()
+    if (!trimmed && !deliveryZoneHint) return
+
+    migratedRef.current = true
+
+    if (deliveryZoneHint) {
+      const zone =
+        zones.find((item) => item.id === deliveryZoneHint.id) ??
+        zones.find((item) => item.name === deliveryZoneHint.name)
+      if (zone && trimmed.includes(',')) {
+        const detail = extractAddressDetail(trimmed, zone, zones)
+        if (detail !== trimmed) {
+          setAddressDraft(detail)
+        }
+      }
+      setZonePanelOpen(false)
+      return
+    }
+
+    const ensured = ensureDeliveryAddressWithZone(trimmed, zones)
+    if (ensured.zone) {
+      applyZoneSelection(
+        ensured.zone,
+        extractAddressDetail(ensured.address, ensured.zone, zones),
+      )
+    }
+  }, [
+    addressDraft,
+    applyZoneSelection,
+    deliveryZoneHint,
+    setAddressDraft,
+    zones,
+  ])
+
+  useEffect(() => {
+    if (zones.length === 0 || mode !== 'delivery' || deliveryZoneHint) return
+    const defaultZone = getDefaultDeliveryZone(zones)
+    if (!defaultZone) return
+    const detail = addressDraft.trim()
+      ? extractAddressDetail(addressDraft, defaultZone, zones)
+      : ''
+    applyZoneSelection(defaultZone, detail)
+  }, [addressDraft, applyZoneSelection, deliveryZoneHint, mode, zones])
+
+  useEffect(() => {
     if (collapseToken <= 0) return
     setZonePanelOpen(false)
   }, [collapseToken])
@@ -203,7 +264,6 @@ export function PickupLocationSelector({
   useEffect(() => {
     return () => {
       if (suggestRef.current) clearTimeout(suggestRef.current)
-      if (resolveRef.current) clearTimeout(resolveRef.current)
     }
   }, [])
 
@@ -260,80 +320,62 @@ export function PickupLocationSelector({
           <button
             type="button"
             onClick={switchToDelivery}
-            className="flex w-full items-center justify-between rounded-2xl border-2 border-dashed border-border-on-dark p-4 text-left text-text-muted transition-colors hover:border-accent-primary/40 hover:text-text-on-dark"
+            className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-accent-primary/35 bg-accent-primary/5 p-5 text-center transition-all hover:border-accent-primary/55 hover:bg-accent-primary/10"
           >
-            <span className="flex items-center gap-2 text-sm">
-              <Truck className="h-4 w-4" />
-              Доставка по адресу...
+            <span className="flex items-center gap-2 text-base font-semibold text-text-on-dark">
+              <Truck className="h-5 w-5 text-accent-primary" />
+              Доставка по адресу
             </span>
-            <ChevronRight className="h-4 w-4" />
+            <span className="text-sm text-text-muted">Укажите населённый пункт и адрес</span>
+            <ChevronRight className="h-5 w-5 text-accent-primary" />
           </button>
         </>
       ) : (
         <div className="space-y-3">
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-3 hidden items-center sm:flex">
-              <Truck className="h-4 w-4 text-text-muted" />
+          {deliveryZoneHint && !zonePanelOpen ? (
+            <div className="rounded-2xl border border-border-on-dark bg-card-inner px-5 py-5 text-center">
+              <p className="text-xs font-medium tracking-[0.18em] text-text-muted">НАСЕЛЁННЫЙ ПУНКТ</p>
+              <p className="mt-2 font-display text-xl font-bold tracking-wide text-text-on-dark">
+                {deliveryZoneHint.name}
+              </p>
+              <p className="mt-1 text-sm text-text-muted">
+                {deliveryZoneHint.deliveryFee > 0
+                  ? formatPrice(deliveryZoneHint.deliveryFee)
+                  : 'бесплатно'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setZonePanelOpen(true)}
+                className="mx-auto mt-5 flex w-full max-w-xs items-center justify-center gap-2 rounded-full border border-accent-primary/35 bg-gradient-to-b from-elevated to-card-inner px-6 py-3.5 text-sm font-semibold text-text-on-dark shadow-md shadow-black/20 transition-all hover:border-accent-primary/55 hover:shadow-accent-primary/10 active:scale-[0.98]"
+              >
+                <MapPin className="h-4 w-4 shrink-0 text-accent-primary" />
+                Выбрать населённый пункт
+              </button>
             </div>
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Например: Милейки, ул. Центральная 12"
-              value={addressDraft}
-              onChange={(e) => handleQueryChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') clearDeliveryInput()
-              }}
-              onFocus={() => {
-                setZonePanelOpen(true)
-                const matches = filterRecentAddresses(addressDraft)
-                setRecentMatches(matches)
-                setShowRecent(matches.length > 0)
-              }}
-              onBlur={handleAddressBlur}
-              autoComplete="street-address"
-              className="h-14 w-full rounded-2xl border border-border-on-dark bg-card-inner py-3 pl-4 pr-10 text-base text-text-on-dark caret-accent-primary placeholder:text-text-faint focus:border-accent-primary/50 focus:outline-none sm:pl-10"
-            />
-            <button
-              type="button"
-              onClick={clearDeliveryInput}
-              className="absolute inset-y-0 right-3 flex items-center text-text-muted hover:text-text-on-dark"
-              aria-label="Очистить адрес"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {isResolving && addressDraft.trim().length >= 2 && (
-            <p className="text-xs text-text-muted">Определяем зону доставки…</p>
-          )}
-
-          {showRecent && recentMatches.length > 0 && (
-            <ul className="animate-float-up overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-2xl shadow-black/40">
-              {recentMatches.map((label) => (
-                <li key={label} className="border-b border-border-on-dark last:border-b-0">
+          ) : (
+            <div className="rounded-2xl border border-border-on-dark bg-card-inner p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium tracking-wide text-text-muted">
+                  НАСЕЛЁННЫЙ ПУНКТ
+                </p>
+                {deliveryZoneHint && (
                   <button
                     type="button"
-                    onMouseDown={() => pickRecentAddress(label)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-text-on-dark transition-colors hover:bg-card-inner"
+                    onClick={() => setZonePanelOpen(false)}
+                    className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-on-dark"
                   >
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-accent-primary" />
-                    <span className="truncate">{label}</span>
+                    Свернуть
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {zonePanelOpen && (
-            <div className="rounded-2xl border border-border-on-dark bg-card-inner p-3">
+                )}
+              </div>
               <div className="mb-2 flex items-center gap-2">
                 <Search className="h-4 w-4 shrink-0 text-text-muted" />
                 <input
                   type="text"
                   value={zoneFilter}
                   onChange={(e) => setZoneFilter(e.target.value)}
-                  placeholder="Населённый пункт..."
+                  placeholder="Поиск..."
                   className="w-full bg-transparent text-sm text-text-on-dark placeholder:text-text-faint focus:outline-none"
                 />
               </div>
@@ -358,6 +400,84 @@ export function PickupLocationSelector({
             </div>
           )}
 
+          <div className="rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-4 shadow-lg shadow-accent-primary/5">
+            <p className="mb-3 text-center text-xs font-bold tracking-[0.2em] text-accent-soft">
+              АДРЕС ДОСТАВКИ
+            </p>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
+                <Truck className="h-5 w-5 text-accent-primary" />
+              </div>
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder={
+                  deliveryZoneHint
+                    ? 'ул. Центральная 12'
+                    : 'Сначала выберите населённый пункт'
+                }
+                value={addressDraft}
+                onChange={(e) => handleDetailChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') clearDeliveryInput()
+                }}
+                onFocus={() => {
+                  const query = deliveryZoneHint
+                    ? composeDeliveryAddress(deliveryZoneHint.name, addressDraft)
+                    : addressDraft
+                  const matches = filterRecentAddresses(query)
+                  setRecentMatches(matches)
+                  setShowRecent(matches.length > 0)
+                }}
+                onBlur={() => {
+                  setTimeout(() => setShowRecent(false), 150)
+                }}
+                disabled={!deliveryZoneHint}
+                autoComplete="street-address"
+                className={cn(
+                  'h-16 w-full rounded-2xl border-2 bg-elevated py-4 pl-12 pr-12 text-lg font-medium text-text-on-dark caret-accent-primary shadow-inner shadow-black/10 placeholder:text-base placeholder:font-normal placeholder:text-text-faint focus:border-accent-primary focus:outline-none focus:ring-4 focus:ring-accent-primary/15',
+                  deliveryZoneHint
+                    ? 'border-accent-primary/40'
+                    : 'cursor-not-allowed border-border-on-dark opacity-60',
+                )}
+              />
+              <button
+                type="button"
+                onClick={clearDeliveryInput}
+                className="absolute inset-y-0 right-4 flex items-center text-text-muted hover:text-text-on-dark"
+                aria-label="Очистить адрес"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {deliveryZoneHint && (
+              <p className="mt-2 text-center text-xs text-text-muted">
+                Укажите улицу и дом — населённый пункт уже выбран
+              </p>
+            )}
+          </div>
+
+          {isResolving && addressDraft.trim().length >= 2 && (
+            <p className="text-xs text-text-muted">Определяем зону доставки…</p>
+          )}
+
+          {showRecent && recentMatches.length > 0 && (
+            <ul className="animate-float-up overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-2xl shadow-black/40">
+              {recentMatches.map((label) => (
+                <li key={label} className="border-b border-border-on-dark last:border-b-0">
+                  <button
+                    type="button"
+                    onMouseDown={() => pickRecentAddress(label)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-text-on-dark transition-colors hover:bg-card-inner"
+                  >
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-accent-primary" />
+                    <span className="truncate">{label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {ambiguousResolve && ambiguousResolve.candidates.length > 1 && (
             <div className="rounded-2xl border border-accent-primary/30 bg-accent-primary/5 p-3">
               <p className="mb-2 text-xs text-text-muted">Уточните населённый пункт:</p>
@@ -369,7 +489,12 @@ export function PickupLocationSelector({
                     <button
                       key={candidate.zoneId}
                       type="button"
-                      onClick={() => applyZoneHint(zone, buildAddressWithZone(addressDraft, zone, zones))}
+                      onClick={() =>
+                        applyZoneSelection(
+                          zone,
+                          extractAddressDetail(addressDraft, zone, zones),
+                        )
+                      }
                       className="rounded-full bg-card-inner px-3 py-1.5 text-xs font-medium text-text-on-dark"
                     >
                       {candidate.zoneName}
@@ -388,7 +513,7 @@ export function PickupLocationSelector({
 
           {deliveryZoneHint && addressDraft.trim().length >= 2 && (
             <p className="text-xs text-text-muted">
-              Зона: {deliveryZoneHint.name}
+              Адрес: {composeDeliveryAddress(deliveryZoneHint.name, addressDraft)}
               {' · '}
               {deliveryZoneHint.deliveryFee > 0
                 ? formatPrice(deliveryZoneHint.deliveryFee)

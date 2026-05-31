@@ -4,6 +4,12 @@ import type { WebBooking } from '@/src/entities/WebBooking'
 import { normalizeAddress } from './normalize'
 import { entityTableNames, getDataSource, getRepo } from './db'
 import { enqueueNotification } from './notifier'
+import {
+  findBlockedSlotsForPickup,
+  findGlobalBlockedSlots,
+  isScheduledAtBlocked,
+} from './blockedSlots'
+import { storeDayBounds } from '@/lib/dates'
 
 function joinEndpoint(base: string, path: string): string {
   if (!base) return path
@@ -70,6 +76,31 @@ export async function rescheduleWebBooking(
       })
       locationLabel = current?.location?.name ?? null
       customAddressLabel = current?.customAddress?.label ?? null
+    }
+
+    const blockedRepo = txn.getRepository(entityTableNames.BlockedSlot)
+    const day = input.scheduledAt.toISOString().slice(0, 10)
+    const { start: dayStart, end: dayEnd } = storeDayBounds(day)
+
+    if (locationId) {
+      const loc = await locationRepo.findOne({ where: { id: locationId } })
+      if (!loc) {
+        throw new Error('Location not found')
+      }
+      const blockedSlots = await findBlockedSlotsForPickup(
+        blockedRepo,
+        dayStart,
+        dayEnd,
+        locationId,
+      )
+      if (isScheduledAtBlocked(input.scheduledAt, blockedSlots, loc.slotStepMinutes || 5)) {
+        throw new Error('Time slot is blocked')
+      }
+    } else if (customAddressId || booking.deliveryZoneId) {
+      const blockedSlots = await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
+      if (isScheduledAtBlocked(input.scheduledAt, blockedSlots)) {
+        throw new Error('Time slot is blocked')
+      }
     }
 
     await bookingRepo.update(booking.id, {

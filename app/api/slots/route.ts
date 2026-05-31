@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getRepo } from '@/src/lib/db'
 import { PickupLocation } from '@/src/entities/PickupLocation'
-import { storeDayBounds } from '@/lib/dates'
+import { storeDayBounds, STORE_SLOT_END, STORE_SLOT_START } from '@/lib/dates'
 import { generateDeliverySlots, generatePickupSlots } from '@/src/lib/slots'
+import {
+  findBlockedSlotsForPickup,
+  findGlobalBlockedSlots,
+} from '@/src/lib/blockedSlots'
 
 const QuerySchema = z.object({
   locationId: z.string().uuid().optional(),
@@ -20,8 +24,8 @@ const DEFAULT_LOCATION: PickupLocation = {
   isActive: true,
   isFeatured: true,
   sortOrder: 0,
-  workDayStart: '10:00',
-  workDayEnd: '21:00',
+  workDayStart: STORE_SLOT_START,
+  workDayEnd: STORE_SLOT_END,
   maxBookingsPerSlot: 1,
   slotStepMinutes: 5,
 }
@@ -65,14 +69,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       .andWhere('wb.deliveryZoneId IS NOT NULL')
       .getMany()
 
-    const blockedSlots = await blockedRepo
-      .createQueryBuilder('bs')
-      .where('bs.startsAt <= :end AND bs.endsAt >= :start', {
-        start: dayStart.toISOString(),
-        end: dayEnd.toISOString(),
-      })
-      .andWhere('bs.locationId IS NULL')
-      .getMany()
+    const blockedSlots = await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
 
     const existingDeliveries = deliveryBookings
       .filter((booking) => booking.roundTripMinutes != null)
@@ -114,17 +111,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     )
     .getMany()
 
-  const blockedSlots = await blockedRepo
-    .createQueryBuilder('bs')
-    .where('bs.startsAt <= :end AND bs.endsAt >= :start', {
-      start: dayStart.toISOString(),
-      end: dayEnd.toISOString(),
-    })
-    .andWhere(
-      locationId ? 'bs.locationId = :locationId' : 'bs.locationId IS NULL',
-      locationId ? { locationId } : {},
-    )
-    .getMany()
+  const blockedSlots = locationId
+    ? await findBlockedSlotsForPickup(blockedRepo, dayStart, dayEnd, locationId)
+    : await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
 
   const slots = generatePickupSlots(date, location, bookings, blockedSlots)
 

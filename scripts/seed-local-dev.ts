@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { getDataSource, getRepo } from '../src/lib/db'
 import { DELIVERY_ZONE_SEEDS } from '../src/lib/deliveryZonesSeed'
+import { STORE_SLOT_END, STORE_SLOT_START } from '../lib/dates'
 import { normalizeAddress } from '../src/lib/normalize'
 
 const PICKUP_LOCATIONS = [
@@ -11,8 +12,8 @@ const PICKUP_LOCATIONS = [
     isActive: true,
     isFeatured: true,
     sortOrder: 0,
-    workDayStart: '10:00',
-    workDayEnd: '21:00',
+    workDayStart: STORE_SLOT_START,
+    workDayEnd: STORE_SLOT_END,
     maxBookingsPerSlot: 2,
     slotStepMinutes: 5,
   },
@@ -23,8 +24,8 @@ const PICKUP_LOCATIONS = [
     isActive: true,
     isFeatured: true,
     sortOrder: 1,
-    workDayStart: '10:00',
-    workDayEnd: '21:00',
+    workDayStart: STORE_SLOT_START,
+    workDayEnd: STORE_SLOT_END,
     maxBookingsPerSlot: 1,
     slotStepMinutes: 5,
   },

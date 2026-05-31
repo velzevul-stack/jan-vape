@@ -13,8 +13,8 @@ const EMPTY_CREATE = {
   code: '',
   name: '',
   address: '',
-  workDayStart: '10:00',
-  workDayEnd: '21:00',
+  workDayStart: '12:00',
+  workDayEnd: '23:00',
   slotStepMinutes: 5,
   maxBookingsPerSlot: 1,
   sortOrder: 0,
@@ -110,8 +110,8 @@ export function LocationManager({ locations }: Props) {
             <Field label="Код" value={createForm.code} onChange={(v) => setCreateForm((f) => ({ ...f, code: v }))} required />
             <Field label="Название" value={createForm.name} onChange={(v) => setCreateForm((f) => ({ ...f, name: v }))} required />
             <Field label="Адрес" value={createForm.address} onChange={(v) => setCreateForm((f) => ({ ...f, address: v }))} className="admin-span-2" />
-            <Field label="Начало дня" value={createForm.workDayStart} onChange={(v) => setCreateForm((f) => ({ ...f, workDayStart: v }))} placeholder="10:00" />
-            <Field label="Конец дня" value={createForm.workDayEnd} onChange={(v) => setCreateForm((f) => ({ ...f, workDayEnd: v }))} placeholder="21:00" />
+            <Field label="Начало дня" value={createForm.workDayStart} onChange={(v) => setCreateForm((f) => ({ ...f, workDayStart: v }))} placeholder="12:00" />
+            <Field label="Конец дня" value={createForm.workDayEnd} onChange={(v) => setCreateForm((f) => ({ ...f, workDayEnd: v }))} placeholder="23:00" />
             <Field label="Шаг слота (мин)" type="number" value={String(createForm.slotStepMinutes)} onChange={(v) => setCreateForm((f) => ({ ...f, slotStepMinutes: Number(v) }))} />
             <Field label="Макс. броней на слот" type="number" value={String(createForm.maxBookingsPerSlot)} onChange={(v) => setCreateForm((f) => ({ ...f, maxBookingsPerSlot: Number(v) }))} />
             <Field label="Порядок сортировки" type="number" value={String(createForm.sortOrder)} onChange={(v) => setCreateForm((f) => ({ ...f, sortOrder: Number(v) }))} />

@@ -25,10 +25,10 @@ export class PickupLocation {
   @Column({ type: 'int', default: 0 })
   sortOrder!: number
 
-  @Column({ type: 'varchar', length: 5, default: '10:00' })
+  @Column({ type: 'varchar', length: 5, default: '12:00' })
   workDayStart!: string
 
-  @Column({ type: 'varchar', length: 5, default: '21:00' })
+  @Column({ type: 'varchar', length: 5, default: '23:00' })
   workDayEnd!: string
 
   @Column({ type: 'int', default: 1 })

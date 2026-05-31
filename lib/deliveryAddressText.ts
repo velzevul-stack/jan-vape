@@ -209,6 +209,36 @@ export function ensureDeliveryAddressWithZone(
   }
 }
 
+export function composeDeliveryAddress(zoneName: string, detail: string): string {
+  const zone = zoneName.trim()
+  const street = cleanupAddressDetail(detail)
+  if (!zone) return street
+  if (!street) return zone
+  return `${zone}, ${street}`
+}
+
+export function extractAddressDetail(
+  fullAddress: string,
+  zone: DeliveryZoneOption | null,
+  zones: DeliveryZoneOption[],
+): string {
+  const trimmed = fullAddress.trim()
+  if (!trimmed) return ''
+
+  const resolvedZone =
+    zone ??
+    resolveZoneFromAddressPrefix(trimmed, zones) ??
+    findZoneExplicitInText(trimmed, zones)
+
+  if (!resolvedZone) {
+    return cleanupAddressDetail(stripKnownZones(trimmed, zones)) || trimmed
+  }
+
+  const stripped = stripKnownZones(trimmed, zones)
+  if (stripped) return stripped
+  return stripDefaultZoneFromPlaceLabel(trimmed, resolvedZone.name)
+}
+
 export function stripDefaultZoneFromPlaceLabel(
   label: string,
   zoneName: string | null | undefined,

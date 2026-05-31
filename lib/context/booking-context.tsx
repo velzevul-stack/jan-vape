@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { composeDeliveryAddress } from '@/lib/deliveryAddressText'
 
 interface DeliveryZoneSelection {
   id: string
@@ -43,6 +44,7 @@ interface BookingContextType extends BookingState {
   isSlotSelected: boolean
   deliveryFee: number
   zoneForSlots: DeliveryZoneSelection | null
+  fullDeliveryAddress: string
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined)
@@ -163,10 +165,15 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
   const confirmDeliveryAddress = useCallback((text: string, zone: DeliveryZoneSelection) => {
     const trimmed = text.trim()
+    const detail = trimmed.startsWith(`${zone.name},`)
+      ? trimmed.slice(zone.name.length + 1).trim()
+      : trimmed.startsWith(zone.name)
+        ? trimmed.slice(zone.name.length).replace(/^[\s,]+/, '').trim()
+        : trimmed
     setState((prev) => ({
       ...prev,
       pickupLocationId: null,
-      addressDraft: trimmed,
+      addressDraft: detail || trimmed,
       customAddressText: trimmed || null,
       deliveryZone: zone,
       deliveryZoneHint: zone,
@@ -223,14 +230,20 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const isPickupSelected = state.pickupLocationId !== null
-  const isDeliveryDraft = state.addressDraft.trim().length >= 3
+  const isDeliveryDraft =
+    state.deliveryZoneHint !== null && state.addressDraft.trim().length >= 2
   const isDeliverySelected =
     state.customAddressText !== null && state.deliveryZone !== null
-  const isLocationSelected = isPickupSelected || isDeliveryDraft
+  const isLocationSelected = isPickupSelected || isDeliveryDraft || isDeliverySelected
   const canProceedToCheckout = isLocationSelected
   const isSlotSelected = state.pickupDate !== null && state.pickupTime !== null
   const deliveryFee = state.deliveryZone?.deliveryFee ?? state.deliveryZoneHint?.deliveryFee ?? 0
   const zoneForSlots = state.deliveryZone ?? state.deliveryZoneHint
+  const fullDeliveryAddress =
+    state.customAddressText?.trim() ||
+    (state.deliveryZoneHint
+      ? composeDeliveryAddress(state.deliveryZoneHint.name, state.addressDraft)
+      : state.addressDraft.trim())
 
   return (
     <BookingContext.Provider
@@ -256,6 +269,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         isSlotSelected,
         deliveryFee,
         zoneForSlots,
+        fullDeliveryAddress,
       }}
     >
       {children}

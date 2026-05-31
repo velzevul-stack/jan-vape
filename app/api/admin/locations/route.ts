@@ -12,8 +12,8 @@ const LocationSchema = z.object({
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
-  workDayStart: z.string().regex(/^\d{2}:\d{2}$/).default('10:00'),
-  workDayEnd: z.string().regex(/^\d{2}:\d{2}$/).default('21:00'),
+  workDayStart: z.string().regex(/^\d{2}:\d{2}$/).default('12:00'),
+  workDayEnd: z.string().regex(/^\d{2}:\d{2}$/).default('23:00'),
   maxBookingsPerSlot: z.number().int().min(1).default(1),
   slotStepMinutes: z.number().int().min(1).max(60).default(5),
 })

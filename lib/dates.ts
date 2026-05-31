@@ -1,5 +1,7 @@
 export const STORE_TIMEZONE = 'Europe/Minsk'
 export const STORE_UTC_OFFSET = '+03:00'
+export const STORE_SLOT_START = '12:00'
+export const STORE_SLOT_END = '23:00'
 
 export function parseCalendarDate(isoDate: string): Date {
   const [year, month, day] = isoDate.split('-').map(Number)

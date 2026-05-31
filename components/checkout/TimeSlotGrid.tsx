@@ -96,6 +96,7 @@ export function TimeSlotGrid() {
     pickupLocationId,
     zoneForSlots,
     addressDraft,
+    fullDeliveryAddress,
     pickupDate,
     pickupTime,
     setPickupTime,
@@ -105,7 +106,7 @@ export function TimeSlotGrid() {
   const { slots, isLoading, error } = useSlots({
     locationId: pickupLocationId ?? undefined,
     deliveryZoneId: zoneForSlots?.id,
-    customAddress: isDeliveryDraft ? addressDraft : undefined,
+    customAddress: isDeliveryDraft ? fullDeliveryAddress : undefined,
     date: pickupDate ?? undefined,
     enabled: !!pickupDate && (!!pickupLocationId || !!zoneForSlots?.id),
   })

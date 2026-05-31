@@ -6,6 +6,7 @@ import {
   isSlotTooSoon,
   slotConflictsWithDeliveries,
 } from './deliveryBusyWindow'
+import { isBlockedByInterval } from './blockedSlots'
 
 export interface SlotInfo {
   time: string
@@ -19,18 +20,6 @@ const NEAR_FUTURE_BLOCK_MINUTES = 10
 function parseTime(hhmm: string): { hour: number; minute: number } {
   const [h, m] = hhmm.split(':').map(Number)
   return { hour: h, minute: m }
-}
-
-function isBlockedByInterval(
-  slotStart: Date,
-  slotEnd: Date,
-  blockedSlots: BlockedSlot[],
-): boolean {
-  return blockedSlots.some((blocked) => {
-    const blockedStart = new Date(blocked.startsAt)
-    const blockedEnd = new Date(blocked.endsAt)
-    return slotStart < blockedEnd && blockedStart < slotEnd
-  })
 }
 
 export function generatePickupSlots(
@@ -52,7 +41,7 @@ export function generatePickupSlots(
 
   const slots: SlotInfo[] = []
 
-  for (let total = startTotal; total < endTotal; total += step) {
+  for (let total = startTotal; total <= endTotal; total += step) {
     const hour = Math.floor(total / 60)
     const minute = total % 60
     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
@@ -100,7 +89,7 @@ export function generateDeliverySlots(
 
   const slots: SlotInfo[] = []
 
-  for (let total = startTotal; total < endTotal; total += step) {
+  for (let total = startTotal; total <= endTotal; total += step) {
     const hour = Math.floor(total / 60)
     const minute = total % 60
     const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`

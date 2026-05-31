@@ -16,6 +16,11 @@ import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { assertDeliverySlotAvailable } from '@/src/lib/deliveryBookingValidation'
+import {
+  findBlockedSlotsForPickup,
+  findGlobalBlockedSlots,
+  isScheduledAtBlocked,
+} from '@/src/lib/blockedSlots'
 import { storeDayBounds } from '@/lib/dates'
 
 const BookingSchema = z.object({
@@ -126,6 +131,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let customAddressLabel: string | null = null
     let deliveryZoneName: string | null = null
 
+    const blockedRepo = txn.getRepository(entityTableNames.BlockedSlot)
+
     if (data.pickupLocationId) {
       const loc = await locationRepo.findOne({ where: { id: data.pickupLocationId } })
       if (!loc || !loc.isActive) {
@@ -134,6 +141,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       locationId = loc.id
       locationLabel = loc.name
+
+      const day = scheduledAt.toISOString().slice(0, 10)
+      const { start: dayStart, end: dayEnd } = storeDayBounds(day)
+      const blockedSlots = await findBlockedSlotsForPickup(
+        blockedRepo,
+        dayStart,
+        dayEnd,
+        loc.id,
+      )
+      if (isScheduledAtBlocked(scheduledAt, blockedSlots, loc.slotStepMinutes || 5)) {
+        errorResponse = NextResponse.json(
+          { error: 'Time slot is blocked', code: 'slot_blocked' },
+          { status: 409 },
+        )
+        return
+      }
     } else if (data.customAddressText && data.deliveryZoneId) {
       const zone = await zoneRepo.findOne({ where: { id: data.deliveryZoneId, isActive: true } })
       if (!zone) {
@@ -161,6 +184,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const day = scheduledAt.toISOString().slice(0, 10)
       const { start: dayStart, end: dayEnd } = storeDayBounds(day)
+      const blockedSlots = await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
+      if (isScheduledAtBlocked(scheduledAt, blockedSlots)) {
+        errorResponse = NextResponse.json(
+          { error: 'Time slot is blocked', code: 'slot_blocked' },
+          { status: 409 },
+        )
+        return
+      }
+
       const existingDeliveries = await bookingRepo
         .createQueryBuilder('wb')
         .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
@@ -173,7 +205,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const available = assertDeliverySlotAvailable(
         scheduledAt,
-        roundTripMinutes,
+        roundTripMinutes as number,
         existingDeliveries
           .filter((booking) => booking.roundTripMinutes != null)
           .map((booking) => ({

@@ -21,7 +21,6 @@ import { mutate } from 'swr'
 import { usePickupLocations } from '@/lib/api/hooks/usePickupLocations'
 import { useCatalog } from '@/lib/api/hooks/useCatalog'
 import { fetchCatalogFresh, resolveCartLinesAgainstCatalog } from '@/lib/api/catalogClient'
-import { resolveDeliveryAddress } from '@/lib/api/hooks/useDeliveryZones'
 import { addRecentAddress } from '@/lib/recentAddresses'
 
 const CATALOG_REFRESH_MS = 5_000
@@ -55,7 +54,6 @@ export default function CheckoutPage() {
 
   const {
     pickupLocationId,
-    addressDraft,
     customAddressText,
     pickupDate,
     pickupTime,
@@ -65,6 +63,7 @@ export default function CheckoutPage() {
     deliveryZone,
     deliveryZoneHint,
     deliveryFee,
+    fullDeliveryAddress,
     isPickupSelected,
     isDeliverySelected,
     isDeliveryDraft,
@@ -78,23 +77,6 @@ export default function CheckoutPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (pickupLocationId || !addressDraft.trim() || deliveryZoneHint) return
-    let cancelled = false
-    void resolveDeliveryAddress(addressDraft).then((result) => {
-      if (cancelled || !result.zoneId) return
-      setDeliveryZoneHint({
-        id: result.zoneId,
-        name: result.zoneName,
-        deliveryFee: result.deliveryFee,
-        roundTripMinutes: result.roundTripMinutes,
-      })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [addressDraft, deliveryZoneHint, pickupLocationId, setDeliveryZoneHint])
 
   useEffect(() => {
     if (items.length === 0) return
@@ -280,7 +262,7 @@ export default function CheckoutPage() {
 
   const locationLabel =
     customAddressText ??
-    (addressDraft.trim() || null) ??
+    (fullDeliveryAddress.trim() || null) ??
     locations.find((l) => l.id === pickupLocationId)?.name ??
     null
 
