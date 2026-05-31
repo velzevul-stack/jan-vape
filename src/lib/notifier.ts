@@ -14,6 +14,39 @@ const REQUEST_TIMEOUT_MS = 8000
 
 let deliveryInFlight = false
 
+async function hasBookingOutboxNotification(
+  bookingId: string,
+  eventType: string,
+): Promise<boolean> {
+  const ds = await getDataSource()
+  const rows: unknown[] = await ds.query(
+    `SELECT 1
+     FROM "${entityTableNames.NotificationOutbox}"
+     WHERE payload->>'bookingId' = $1
+       AND payload->>'type' = $2
+       AND ("deliveredAt" IS NOT NULL OR attempts < $3)
+     LIMIT 1`,
+    [bookingId, eventType, MAX_ATTEMPTS],
+  )
+  return rows.length > 0
+}
+
+export async function enqueueBookingUserbotNotification(
+  endpoint: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  if (!endpoint) return
+  const bookingId = payload.bookingId
+  const eventType = payload.type
+  if (typeof bookingId === 'string' && bookingId && typeof eventType === 'string') {
+    if (await hasBookingOutboxNotification(bookingId, eventType)) {
+      console.info('[notifier] skip duplicate booking notification', { bookingId, eventType })
+      return
+    }
+  }
+  await enqueueNotification(endpoint, payload)
+}
+
 export async function enqueueNotification(
   endpoint: string,
   payload: unknown,

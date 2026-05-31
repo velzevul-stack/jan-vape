@@ -8,7 +8,7 @@ import type { WebBooking, WebBookingStatus } from '@/src/entities/WebBooking'
 import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
 import { markCustomerTrusted } from '@/src/lib/customerStats'
 import { notifyAdminBookingPendingResolved } from '@/src/lib/adminBookingNotify'
-import { enqueueNotification } from '@/src/lib/notifier'
+import { enqueueBookingUserbotNotification } from '@/src/lib/notifier'
 
 const UpdateSchema = z.object({
   updates: z.array(
@@ -177,7 +177,7 @@ async function dispatchUserbotEvents(
         totalAmount: Number(booking.totalAmount),
       }
       try {
-        await enqueueNotification(endpoint, payload)
+        await enqueueBookingUserbotNotification(endpoint, payload)
       } catch (err) {
         console.error('[reservations/status] enqueue confirmed failed', err)
       }
@@ -190,7 +190,7 @@ async function dispatchUserbotEvents(
         customerTelegram: booking.customerTelegram,
       }
       try {
-        await enqueueNotification(endpoint, payload)
+        await enqueueBookingUserbotNotification(endpoint, payload)
       } catch (err) {
         console.error('[reservations/status] enqueue sale-completed failed', err)
       }
