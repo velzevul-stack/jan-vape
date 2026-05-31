@@ -401,8 +401,11 @@ export function PickupLocationSelector({
           )}
 
           <div className="rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-4 shadow-lg shadow-accent-primary/5">
-            <p className="mb-3 text-center text-xs font-bold tracking-[0.2em] text-accent-soft">
+            <p className="mb-1 text-center text-xs font-bold tracking-[0.2em] text-accent-soft">
               АДРЕС ДОСТАВКИ
+            </p>
+            <p className="mb-3 text-center text-sm text-text-muted">
+              Напишите адрес или название места — куда привезти заказ
             </p>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
@@ -413,7 +416,7 @@ export function PickupLocationSelector({
                 type="text"
                 placeholder={
                   deliveryZoneHint
-                    ? 'ул. Центральная 12'
+                    ? 'ул. Центральная 12 или Милейки, д. 5'
                     : 'Сначала выберите населённый пункт'
                 }
                 value={addressDraft}
@@ -450,11 +453,6 @@ export function PickupLocationSelector({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {deliveryZoneHint && (
-              <p className="mt-2 text-center text-xs text-text-muted">
-                Укажите улицу и дом — населённый пункт уже выбран
-              </p>
-            )}
           </div>
 
           {isResolving && addressDraft.trim().length >= 2 && (

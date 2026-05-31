@@ -79,7 +79,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         updateData.syncedToAppAt = new Date()
       }
 
-      await repo.update(booking.id, updateData)
+      if (newStatus === 'completed') {
+        const result = await repo.update(
+          { id: booking.id, status: In(['pending', 'confirmed']) },
+          updateData,
+        )
+        if (!result.affected) {
+          continue
+        }
+      } else {
+        await repo.update(booking.id, updateData)
+      }
       updated++
 
       await notifyAdminBookingPendingResolved(booking, previousStatus, newStatus, 'app')
