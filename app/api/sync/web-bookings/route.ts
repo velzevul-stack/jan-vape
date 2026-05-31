@@ -3,6 +3,7 @@ import { verifySyncAuth } from '@/src/lib/auth'
 import { getCustomerStatsMap } from '@/src/lib/customerStats'
 import { getRepo } from '@/src/lib/db'
 import { telegramLookupKey } from '@/src/lib/telegramBooking'
+import type { WebBooking } from '@/src/entities/WebBooking'
 import { In, MoreThan } from 'typeorm'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -18,10 +19,38 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const repo = await getRepo('WebBooking')
 
+  const relations = {
+    location: true,
+    customAddress: true,
+    deliveryZone: true,
+  } as const
+
+  const webBookingId = req.nextUrl.searchParams.get('webBookingId')?.trim()
+  const appReservationIdRaw = req.nextUrl.searchParams.get('appReservationId')
+  if (webBookingId || appReservationIdRaw) {
+    const appReservationId = appReservationIdRaw
+      ? parseInt(appReservationIdRaw, 10)
+      : null
+    let booking = webBookingId
+      ? await repo.findOne({ where: { id: webBookingId }, relations: relations })
+      : null
+    if (!booking && appReservationId != null && appReservationId > 0) {
+      booking = await repo.findOne({
+        where: { appReservationId },
+        relations: relations,
+      })
+    }
+    if (!booking) {
+      return NextResponse.json({ bookings: [], count: 0 })
+    }
+    const serialized = await serializeWebBookings([booking])
+    return NextResponse.json({ bookings: serialized, count: serialized.length })
+  }
+
   const bookings = pendingOnly
     ? await repo.find({
         where: { status: 'pending' },
-        relations: { location: true, customAddress: true, deliveryZone: true },
+        relations: relations,
         order: { createdAt: 'DESC' },
         take: limit,
       })
@@ -30,11 +59,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const since = new Date(sinceMs || 0)
         return repo.find({
           where: { updatedAt: MoreThan(since) },
-          relations: { location: true, customAddress: true, deliveryZone: true },
+          relations: relations,
           order: { updatedAt: 'ASC' },
           take: limit,
         })
       })()
+
+  const serialized = await serializeWebBookings(bookings)
+
+  return NextResponse.json({ bookings: serialized, count: serialized.length })
+}
+
+async function serializeWebBookings(bookings: WebBooking[]) {
+  if (bookings.length === 0) return []
 
   const snapshotIds = Array.from(
     new Set(bookings.flatMap((b) => b.items.map((item) => item.productId))),
@@ -50,7 +87,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     bookings.map((booking) => booking.customerTelegram),
   )
 
-  const result = bookings.map((b) => {
+  return bookings.map((b) => {
     const stats = statsByTelegram.get(telegramLookupKey(b.customerTelegram))
     return {
       id: b.id,
@@ -87,6 +124,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       updatedAt: b.updatedAt.getTime(),
     }
   })
-
-  return NextResponse.json({ bookings: result, count: result.length })
 }
