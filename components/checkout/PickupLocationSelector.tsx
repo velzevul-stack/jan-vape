@@ -416,7 +416,7 @@ export function PickupLocationSelector({
                 type="text"
                 placeholder={
                   deliveryZoneHint
-                    ? 'ул. Центральная 12 или Милейки, д. 5'
+                    ? 'Адрес или место'
                     : 'Сначала выберите населённый пункт'
                 }
                 value={addressDraft}
