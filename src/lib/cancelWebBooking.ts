@@ -64,6 +64,21 @@ export async function cancelWebBooking(
     }
   }
 
+  if (!wasCancelled) {
+    const alertType =
+      cancelledBy === 'customer' ? 'booking_cancelled_by_customer' : 'booking_cancelled'
+    await enqueueAppAlert(alertType, {
+      bookingId: booking.id,
+      appReservationId: booking.appReservationId,
+      publicNumber: booking.publicNumber,
+      customerTelegram: booking.customerTelegram,
+      customerName: booking.customerName,
+      lastMessage: options?.lastMessage ?? null,
+      reason: customerReason,
+      cancelledBy,
+    })
+  }
+
   if (cancelledBy === 'customer') {
     const adminBase = process.env.NOTIFY_ADMIN_BOT_URL
     if (adminBase) {
@@ -83,15 +98,6 @@ export async function cancelWebBooking(
         console.error('[cancelWebBooking] admin enqueue failed', err)
       }
     }
-
-    await enqueueAppAlert('booking_cancelled_by_customer', {
-      bookingId: booking.id,
-      publicNumber: booking.publicNumber,
-      customerTelegram: booking.customerTelegram,
-      customerName: booking.customerName,
-      lastMessage: options?.lastMessage ?? null,
-      reason,
-    })
   }
 
   revalidatePath('/admin')
