@@ -17,6 +17,8 @@ import {
   ArrowUp,
   Layers,
   Menu,
+  LayoutGrid,
+  List,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -26,6 +28,7 @@ import {
   categoryOrder,
 } from '@/lib/mock-data'
 import { ProductCard } from './ProductCard'
+import { BrandRow } from './BrandRow'
 import { Slider } from '@/components/ui/slider'
 import { mergeFilterRules, slugifyForAnchor } from '@/lib/catalog/filterRules'
 import {
@@ -137,6 +140,7 @@ export function ProductGrid({
   const [showFilters, setShowFilters] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('list')
 
   const toggleTaste = (taste: TasteFilter) => {
     setTasteFilters((prev) => {
@@ -621,6 +625,34 @@ export function ProductGrid({
             </>
           )}
         </div>
+        <div className="flex rounded-lg border border-border-on-dark bg-card-inner p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            aria-label="Компактный список"
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+              viewMode === 'list'
+                ? 'bg-elevated text-accent-primary shadow-sm'
+                : 'text-text-muted hover:text-text-on-dark',
+            )}
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('cards')}
+            aria-label="Карточки"
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+              viewMode === 'cards'
+                ? 'bg-elevated text-accent-primary shadow-sm'
+                : 'text-text-muted hover:text-text-on-dark',
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -659,45 +691,64 @@ export function ProductGrid({
                   </header>
                 )}
 
-                <div className="space-y-8">
-                  {group.brands.map((brandGroup) => {
-                    const brandAnchor = `brand-${slugifyForAnchor(group.category)}-${slugifyForAnchor(brandGroup.brand)}`
-                    return (
-                      <section
-                        key={brandAnchor}
-                        id={brandAnchor}
-                        ref={(el) => registerSection(brandAnchor, el)}
-                        className="scroll-mt-24"
-                      >
-                        <header className="mb-3 flex items-center justify-between gap-3">
-                          <h3
-                            className={cn(
-                              'font-display text-base font-extrabold tracking-wide text-text-on-dark sm:text-lg',
-                              activeAnchor === brandAnchor && 'text-accent-soft',
-                            )}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => onSelectBrand(group.category, brandGroup.brand)}
-                              className="text-left transition-colors hover:text-accent-soft"
+                {viewMode === 'list' ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.brands.map((brandGroup) => {
+                      const firstProduct = brandGroup.products[0]
+                      const price = firstProduct?.retailPrice ?? 0
+                      const spec = firstProduct?.specification
+                      return (
+                        <BrandRow
+                          key={brandGroup.brand}
+                          brand={brandGroup.brand}
+                          price={price}
+                          products={brandGroup.products}
+                          specification={spec}
+                        />
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {group.brands.map((brandGroup) => {
+                      const brandAnchor = `brand-${slugifyForAnchor(group.category)}-${slugifyForAnchor(brandGroup.brand)}`
+                      return (
+                        <section
+                          key={brandAnchor}
+                          id={brandAnchor}
+                          ref={(el) => registerSection(brandAnchor, el)}
+                          className="scroll-mt-24"
+                        >
+                          <header className="mb-3 flex items-center justify-between gap-3">
+                            <h3
+                              className={cn(
+                                'font-display text-base font-extrabold tracking-wide text-text-on-dark sm:text-lg',
+                                activeAnchor === brandAnchor && 'text-accent-soft',
+                              )}
                             >
-                              {brandGroup.brand}
-                            </button>
-                          </h3>
-                          <span className="rounded-md bg-card-inner px-2 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
-                            {brandGroup.products.length}
-                          </span>
-                        </header>
+                              <button
+                                type="button"
+                                onClick={() => onSelectBrand(group.category, brandGroup.brand)}
+                                className="text-left transition-colors hover:text-accent-soft"
+                              >
+                                {brandGroup.brand}
+                              </button>
+                            </h3>
+                            <span className="rounded-md bg-card-inner px-2 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
+                              {brandGroup.products.length}
+                            </span>
+                          </header>
 
-                        <div className="stagger-fade grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-                          {brandGroup.products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
-                          ))}
-                        </div>
-                      </section>
-                    )
-                  })}
-                </div>
+                          <div className="stagger-fade grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+                            {brandGroup.products.map((product) => (
+                              <ProductCard key={product.id} product={product} />
+                            ))}
+                          </div>
+                        </section>
+                      )
+                    })}
+                  </div>
+                )}
               </section>
             )
           })}

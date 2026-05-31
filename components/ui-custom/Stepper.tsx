@@ -89,10 +89,10 @@ export function CompactStepper({ value, onAdd, onRemove, max = 99 }: CompactStep
     return (
       <button
         onClick={onAdd}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-primary text-text-on-accent transition-all duration-150 hover:bg-accent-hover active:scale-95"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-primary/90 text-text-on-accent transition-all duration-150 hover:bg-accent-primary active:scale-95"
         aria-label="Добавить в корзину"
       >
-        <Plus className="h-5 w-5" />
+        <Plus className="h-4 w-4" />
       </button>
     )
   }
