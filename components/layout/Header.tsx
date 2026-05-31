@@ -49,7 +49,7 @@ export function Header() {
               JAN-VAPE
             </span>
             <span className="hidden text-[10px] uppercase tracking-[0.32em] text-text-muted sm:block">
-              Ивацевичи · 18+
+              Ивацевичи
             </span>
           </span>
         </Link>

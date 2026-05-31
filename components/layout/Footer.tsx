@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertTriangle, MapPin, Send, Sparkles } from 'lucide-react'
+import { MapPin, Send, Sparkles } from 'lucide-react'
 
 const TELEGRAM_URL = 'https://t.me/Jfjfjir93299392992'
 
@@ -42,19 +42,6 @@ export function Footer() {
               @Jfjfjir93299392992
             </FooterLink>
           </FooterCol>
-        </div>
-
-        <div className="flex items-start gap-3 rounded-xl border border-status-warning/20 bg-status-warning/5 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-warning" />
-          <div>
-            <p className="font-display text-sm font-extrabold tracking-wider text-text-on-dark">
-              18+
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-text-muted">
-              Продажа никотиносодержащей и табачной продукции лицам младше 18 лет запрещена.
-              Товары предназначены для совершеннолетних пользователей.
-            </p>
-          </div>
         </div>
 
         <div className="mt-6 border-t border-border-on-dark pt-6 text-center text-xs text-text-faint">

@@ -4,6 +4,7 @@ import { In } from 'typeorm'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
 import { enqueueNotification } from '@/src/lib/notifier'
+import { enrichUserbotPayload } from '@/src/lib/customerTelegramUserId'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   const { id } = await context.params
@@ -43,24 +44,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       const productMap = new Map(products.map((p) => [p.id, p]))
 
       const endpoint = joinEndpoint(userbotBase, '/events/booking-confirmed')
-      const payload = {
-        type: 'booking_confirmed',
-        bookingId: booking.id,
-        publicNumber: booking.publicNumber,
-        customerTelegram: booking.customerTelegram,
-        scheduledAt: booking.scheduledAt.toISOString(),
-        locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
-        items: booking.items.map((item) => {
-          const product = productMap.get(item.productId)
-          return {
-            flavor: product?.flavor ?? '',
-            brand: product?.brand ?? '',
-            quantity: item.quantity,
-            price: item.retailPriceSnapshot,
-          }
-        }),
-        totalAmount: Number(booking.totalAmount),
-      }
+      const payload = await enrichUserbotPayload(
+        {
+          type: 'booking_confirmed',
+          bookingId: booking.id,
+          publicNumber: booking.publicNumber,
+          customerTelegram: booking.customerTelegram,
+          scheduledAt: booking.scheduledAt.toISOString(),
+          locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
+          items: booking.items.map((item) => {
+            const product = productMap.get(item.productId)
+            return {
+              flavor: product?.flavor ?? '',
+              brand: product?.brand ?? '',
+              quantity: item.quantity,
+              price: item.retailPriceSnapshot,
+            }
+          }),
+          totalAmount: Number(booking.totalAmount),
+        },
+        booking,
+      )
       try {
         await enqueueNotification(endpoint, payload)
       } catch (err) {

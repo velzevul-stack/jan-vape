@@ -35,6 +35,9 @@ export class WebBooking {
   @Column({ type: 'varchar', length: 255 })
   customerTelegram!: string
 
+  @Column({ type: 'bigint', nullable: true })
+  customerTelegramUserId!: string | null
+
   @Column({ type: 'text', nullable: true })
   comment!: string | null
 

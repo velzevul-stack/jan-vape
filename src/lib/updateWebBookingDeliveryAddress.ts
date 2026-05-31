@@ -3,6 +3,7 @@ import type { WebBooking } from '@/src/entities/WebBooking'
 import { normalizeAddress } from './normalize'
 import { entityTableNames, getDataSource, getRepo } from './db'
 import { enqueueNotification } from './notifier'
+import { enrichUserbotPayload } from './customerTelegramUserId'
 
 function joinEndpoint(base: string, path: string): string {
   if (!base) return path
@@ -79,14 +80,17 @@ export async function updateWebBookingDeliveryAddress(
   const userbotBase = process.env.NOTIFY_USERBOT_URL
   if (userbotBase && notifyCustomer && booking.customerTelegram) {
     const endpoint = joinEndpoint(userbotBase, '/events/booking-address-changed')
-    const payload = {
-      type: 'booking_address_changed',
-      bookingId: booking.id,
-      publicNumber: booking.publicNumber,
-      customerTelegram: booking.customerTelegram,
-      oldAddressLabel: oldLabel,
-      newAddressLabel: customAddressLabel ?? newText,
-    }
+    const payload = await enrichUserbotPayload(
+      {
+        type: 'booking_address_changed',
+        bookingId: booking.id,
+        publicNumber: booking.publicNumber,
+        customerTelegram: booking.customerTelegram,
+        oldAddressLabel: oldLabel,
+        newAddressLabel: customAddressLabel ?? newText,
+      },
+      booking,
+    )
     try {
       await enqueueNotification(endpoint, payload)
     } catch (err) {

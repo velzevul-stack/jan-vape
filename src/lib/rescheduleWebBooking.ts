@@ -4,6 +4,7 @@ import type { WebBooking } from '@/src/entities/WebBooking'
 import { normalizeAddress } from './normalize'
 import { entityTableNames, getDataSource, getRepo } from './db'
 import { enqueueNotification } from './notifier'
+import { enrichUserbotPayload } from './customerTelegramUserId'
 import {
   findBlockedSlotsForPickup,
   findGlobalBlockedSlots,
@@ -126,24 +127,27 @@ export async function rescheduleWebBooking(
     const productMap = new Map(products.map((p) => [p.id, p]))
 
     const endpoint = joinEndpoint(userbotBase, '/events/booking-rescheduled')
-    const payload = {
-      type: 'booking_rescheduled',
-      bookingId: booking.id,
-      publicNumber: booking.publicNumber,
-      customerTelegram: booking.customerTelegram,
-      scheduledAt: booking.scheduledAt.toISOString(),
-      locationLabel: locationLabel ?? customAddressLabel,
-      items: booking.items.map((item) => {
-        const product = productMap.get(item.productId)
-        return {
-          flavor: product?.flavor ?? '',
-          brand: product?.brand ?? '',
-          quantity: item.quantity,
-          price: item.retailPriceSnapshot,
-        }
-      }),
-      totalAmount: Number(booking.totalAmount),
-    }
+    const payload = await enrichUserbotPayload(
+      {
+        type: 'booking_rescheduled',
+        bookingId: booking.id,
+        publicNumber: booking.publicNumber,
+        customerTelegram: booking.customerTelegram,
+        scheduledAt: booking.scheduledAt.toISOString(),
+        locationLabel: locationLabel ?? customAddressLabel,
+        items: booking.items.map((item) => {
+          const product = productMap.get(item.productId)
+          return {
+            flavor: product?.flavor ?? '',
+            brand: product?.brand ?? '',
+            quantity: item.quantity,
+            price: item.retailPriceSnapshot,
+          }
+        }),
+        totalAmount: Number(booking.totalAmount),
+      },
+      booking,
+    )
     try {
       await enqueueNotification(endpoint, payload)
     } catch (err) {

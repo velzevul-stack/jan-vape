@@ -16,6 +16,7 @@ import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { assertDeliverySlotAvailable } from '@/src/lib/deliveryBookingValidation'
+import { resolveCustomerTelegramUserId } from '@/src/lib/customerTelegramUserId'
 import {
   findBlockedSlotsForPickup,
   findGlobalBlockedSlots,
@@ -243,11 +244,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
     const totalAmount = itemsTotal + deliveryFee
 
+    let customerTelegramUserId: string | null = null
+    if (tgSession?.id) {
+      customerTelegramUserId = tgSession.id
+    } else {
+      customerTelegramUserId = await resolveCustomerTelegramUserId(customerTelegram)
+    }
+
     const booking = bookingRepo.create({
       publicNumber: generatePublicNumber(),
       source: 'web',
       customerName: data.customerName,
       customerTelegram,
+      customerTelegramUserId,
       comment: data.comment ?? null,
       scheduledAt,
       locationId,

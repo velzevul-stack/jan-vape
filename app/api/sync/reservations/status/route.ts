@@ -9,6 +9,7 @@ import { cancelWebBooking } from '@/src/lib/cancelWebBooking'
 import { markCustomerTrusted } from '@/src/lib/customerStats'
 import { notifyAdminBookingPendingResolved } from '@/src/lib/adminBookingNotify'
 import { enqueueBookingUserbotNotification } from '@/src/lib/notifier'
+import { enrichUserbotPayload } from '@/src/lib/customerTelegramUserId'
 
 const UpdateSchema = z.object({
   updates: z.array(
@@ -158,24 +159,27 @@ async function dispatchUserbotEvents(
 
     if (change.newStatus === 'confirmed') {
       const endpoint = joinEndpoint(userbotBase, '/events/booking-confirmed')
-      const payload = {
-        type: 'booking_confirmed',
-        bookingId: booking.id,
-        publicNumber: booking.publicNumber,
-        customerTelegram: booking.customerTelegram,
-        scheduledAt: booking.scheduledAt.toISOString(),
-        locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
-        items: booking.items.map((item) => {
-          const product = productMap.get(item.productId)
-          return {
-            flavor: product?.flavor ?? '',
-            brand: product?.brand ?? '',
-            quantity: item.quantity,
-            price: item.retailPriceSnapshot,
-          }
-        }),
-        totalAmount: Number(booking.totalAmount),
-      }
+      const payload = await enrichUserbotPayload(
+        {
+          type: 'booking_confirmed',
+          bookingId: booking.id,
+          publicNumber: booking.publicNumber,
+          customerTelegram: booking.customerTelegram,
+          scheduledAt: booking.scheduledAt.toISOString(),
+          locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
+          items: booking.items.map((item) => {
+            const product = productMap.get(item.productId)
+            return {
+              flavor: product?.flavor ?? '',
+              brand: product?.brand ?? '',
+              quantity: item.quantity,
+              price: item.retailPriceSnapshot,
+            }
+          }),
+          totalAmount: Number(booking.totalAmount),
+        },
+        booking,
+      )
       try {
         await enqueueBookingUserbotNotification(endpoint, payload)
       } catch (err) {
@@ -183,12 +187,15 @@ async function dispatchUserbotEvents(
       }
     } else if (change.newStatus === 'completed') {
       const endpoint = joinEndpoint(userbotBase, '/events/sale-completed')
-      const payload = {
-        type: 'sale_completed',
-        bookingId: booking.id,
-        publicNumber: booking.publicNumber,
-        customerTelegram: booking.customerTelegram,
-      }
+      const payload = await enrichUserbotPayload(
+        {
+          type: 'sale_completed',
+          bookingId: booking.id,
+          publicNumber: booking.publicNumber,
+          customerTelegram: booking.customerTelegram,
+        },
+        booking,
+      )
       try {
         await enqueueBookingUserbotNotification(endpoint, payload)
       } catch (err) {

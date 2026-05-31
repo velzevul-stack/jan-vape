@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache'
 import type { WebBooking } from '@/src/entities/WebBooking'
 import { getRepo } from './db'
 import { enqueueNotification } from './notifier'
+import { enrichUserbotPayload } from './customerTelegramUserId'
 import { enqueueAppAlert } from './appAlerts'
 import { resolveCancelledFromStatus } from './customerStats'
 
@@ -46,13 +47,16 @@ export async function cancelWebBooking(
   const userbotBase = process.env.NOTIFY_USERBOT_URL
   if (userbotBase && notifyCustomer && !wasCancelled) {
     const endpoint = joinEndpoint(userbotBase, '/events/booking-cancelled')
-    const payload = {
-      type: 'booking_cancelled',
-      bookingId: booking.id,
-      publicNumber: booking.publicNumber,
-      customerTelegram: booking.customerTelegram,
-      reason: customerReason,
-    }
+    const payload = await enrichUserbotPayload(
+      {
+        type: 'booking_cancelled',
+        bookingId: booking.id,
+        publicNumber: booking.publicNumber,
+        customerTelegram: booking.customerTelegram,
+        reason: customerReason,
+      },
+      booking,
+    )
     try {
       await enqueueNotification(endpoint, payload)
     } catch (err) {
