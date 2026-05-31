@@ -401,8 +401,8 @@ export function PickupLocationSelector({
           )}
 
           <div className="rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-4 shadow-lg shadow-accent-primary/5">
-            <p className="mb-1 text-center text-xs font-bold tracking-[0.2em] text-accent-soft">
-              АДРЕС ДОСТАВКИ
+            <p className="mb-2 text-center text-base font-bold tracking-wide text-accent-soft sm:text-lg">
+              АДРЕС ИЛИ МЕСТО ДОСТАВКИ
             </p>
             <p className="mb-3 text-center text-sm text-text-muted">
               Напишите адрес или название места — куда привезти заказ

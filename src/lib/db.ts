@@ -57,13 +57,17 @@ declare global {
 }
 
 function createDataSource(): DataSource {
+  const url = process.env.DATABASE_URL ?? ''
+  const needsSsl =
+    process.env.NODE_ENV === 'production' ||
+    url.includes('neon.tech') ||
+    url.includes('sslmode=require') ||
+    url.includes('sslmode=verify-full')
+
   return new DataSource({
     type: 'postgres',
-    url: process.env.DATABASE_URL,
-    ssl:
-      process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false,
+    url,
+    ssl: needsSsl ? { rejectUnauthorized: false } : false,
     entities,
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : false,
