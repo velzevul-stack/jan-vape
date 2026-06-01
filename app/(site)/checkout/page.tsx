@@ -292,7 +292,7 @@ export default function CheckoutPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 px-4 py-6 md:px-6 md:py-10">
+      <main className="flex-1 px-4 py-6 pb-28 md:px-6 md:py-10 lg:pb-10">
         <PageContainer maxWidth="checkout">
           <Link
             href="/cart"
@@ -307,7 +307,7 @@ export default function CheckoutPage() {
           </h1>
 
           <div className="flex flex-col gap-8 lg:grid lg:grid-cols-5">
-            <div className="order-1 space-y-8 lg:order-none lg:col-span-3">
+            <div className="space-y-8 lg:col-span-3">
               <div>
                 <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                   ВАШ ЗАКАЗ
@@ -403,7 +403,7 @@ export default function CheckoutPage() {
               <ContactForm />
             </div>
 
-            <div className="order-2 lg:order-none lg:col-span-2">
+            <div className="hidden lg:block lg:col-span-2">
               <div className="surface-card rounded-3xl p-6 lg:sticky lg:top-[6rem]">
                 <h3 className="mb-4 font-display text-lg font-extrabold tracking-wider text-text-on-dark">
                   СВОДКА
@@ -513,7 +513,43 @@ export default function CheckoutPage() {
         </PageContainer>
       </main>
 
-      <Footer />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border-on-dark bg-canvas/95 px-4 pt-3 backdrop-blur-sm lg:hidden"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
+        {submitError && (
+          <p className="mb-2 rounded-xl bg-status-danger/10 px-3 py-1.5 text-xs text-status-danger">
+            {submitError}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <div className="shrink-0">
+            <p className="text-[10px] font-bold tracking-[0.15em] text-text-muted">ИТОГО</p>
+            <p className="font-display text-xl font-extrabold tabular-nums text-text-on-dark">
+              {formatPrice(orderTotal)}
+            </p>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            className={cn(
+              'flex h-12 flex-1 items-center justify-center gap-2 rounded-full',
+              'font-display text-sm font-extrabold uppercase tracking-wider transition-all duration-200',
+              canSubmit && !isSubmitting
+                ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 active:scale-[0.98]'
+                : 'cursor-not-allowed bg-card-inner text-text-faint',
+            )}
+          >
+            {isSubmitting ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-text-on-accent border-t-transparent" />
+            ) : (
+              'Подтвердить бронь'
+            )}
+          </button>
+        </div>
+      </div>
+
+      <Footer compact />
     </div>
   )
 }

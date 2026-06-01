@@ -58,7 +58,7 @@ export default function CartPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 px-4 py-6 md:px-6 md:py-10">
+      <main className="flex-1 px-4 py-6 pb-28 md:px-6 md:py-10 lg:pb-10">
         <PageContainer maxWidth="cart">
           <Link
             href="/"
@@ -145,7 +145,28 @@ export default function CartPage() {
 
       <DeliveryConfirmDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen} />
 
-      <Footer />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border-on-dark bg-canvas/95 px-4 pt-3 backdrop-blur-sm lg:hidden"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
+        <button
+          type="button"
+          onClick={handleProceed}
+          disabled={!canProceedToCheckout}
+          className={cn(
+            'flex h-12 w-full items-center justify-center gap-2 rounded-full',
+            'font-display text-sm font-extrabold uppercase tracking-wider transition-all duration-200',
+            canProceedToCheckout
+              ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 active:scale-[0.98]'
+              : 'cursor-not-allowed bg-card-inner text-text-faint',
+          )}
+        >
+          <span>Выбрать дату и время</span>
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <Footer compact />
     </div>
   )
 }

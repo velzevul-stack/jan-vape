@@ -425,6 +425,7 @@ export function PickupLocationSelector({
                   if (e.key === 'Escape') clearDeliveryInput()
                 }}
                 onFocus={() => {
+                  if (deliveryZoneHint) setZonePanelOpen(false)
                   const query = deliveryZoneHint
                     ? composeDeliveryAddress(deliveryZoneHint.name, addressDraft)
                     : addressDraft

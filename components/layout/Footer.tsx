@@ -3,9 +3,9 @@ import { MapPin, Send, Sparkles } from 'lucide-react'
 
 const TELEGRAM_URL = 'https://t.me/Jfjfjir93299392992'
 
-export function Footer() {
+export function Footer({ compact = false }: { compact?: boolean }) {
   return (
-    <footer className="mt-12 border-t border-border-on-dark bg-canvas py-10 pb-28 md:pb-12">
+    <footer className={`mt-12 border-t border-border-on-dark bg-canvas py-10 ${compact ? 'pb-6 md:pb-10' : 'pb-28 md:pb-12'}`}>
       <div className="mx-auto max-w-7xl px-4 md:px-6">
         <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
           <div>
