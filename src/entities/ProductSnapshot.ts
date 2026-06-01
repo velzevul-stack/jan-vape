@@ -38,6 +38,9 @@ export class ProductSnapshot {
   @Column({ type: 'int', default: 0 })
   postStock!: number
 
+  @Column({ type: 'int', default: 0 })
+  sortOrder!: number
+
   @Column({ type: 'boolean', default: false })
   isHidden!: boolean
 

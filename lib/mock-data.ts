@@ -12,6 +12,7 @@ export interface Product {
   tasteProfile: string
   retailPrice: number
   availableOnPost: number
+  sortOrder?: number
   specification?: string
   image?: string
 }

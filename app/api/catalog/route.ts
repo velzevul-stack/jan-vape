@@ -79,6 +79,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       tasteProfile: p.tasteProfile,
       retailPrice: Number(p.retailPrice),
       availableOnPost: availMap.get(p.id) ?? 0,
+      sortOrder: p.sortOrder ?? 0,
     }))
     .filter((p) => p.availableOnPost > 0)
 

@@ -13,6 +13,7 @@ const ProductSchema = z.object({
   tasteProfile: z.string().max(255).default(''),
   retailPrice: z.number().min(0),
   postStock: z.number().int().min(0),
+  sortOrder: z.number().int().min(0).default(0),
 })
 
 const BodySchema = z.object({
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             tasteProfile: p.tasteProfile,
             retailPrice: p.retailPrice,
             postStock: p.postStock,
+            sortOrder: p.sortOrder,
             isHidden: false,
             deletedAt: null,
           })
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               tasteProfile: p.tasteProfile,
               retailPrice: p.retailPrice,
               postStock: p.postStock,
+              sortOrder: p.sortOrder,
               isHidden: false,
             }),
           )

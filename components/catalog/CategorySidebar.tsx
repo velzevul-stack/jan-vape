@@ -50,20 +50,27 @@ export interface CategorySidebarProps {
 }
 
 function buildTree(products: Product[]): CategoryNode[] {
-  const map = new Map<ProductCategory, Map<string, number>>()
+  const map = new Map<ProductCategory, Map<string, { count: number; minSort: number }>>()
   for (const p of products) {
     if (!map.has(p.category)) map.set(p.category, new Map())
     const brands = map.get(p.category)!
-    brands.set(p.brand, (brands.get(p.brand) ?? 0) + 1)
+    const sort = p.sortOrder ?? 0
+    const prev = brands.get(p.brand)
+    brands.set(p.brand, {
+      count: (prev?.count ?? 0) + 1,
+      minSort: prev == null ? sort : Math.min(prev.minSort, sort),
+    })
   }
   const result: CategoryNode[] = []
   for (const category of categoryOrder) {
     const brands = map.get(category)
     if (!brands || brands.size === 0) continue
     const brandList: BrandNode[] = Array.from(brands.entries())
-      .map(([brand, count]) => ({ brand, count, category }))
+      .map(([brand, { count }]) => ({ brand, count, category }))
       .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count
+        const minA = brands.get(a.brand)!.minSort
+        const minB = brands.get(b.brand)!.minSort
+        if (minA !== minB) return minA - minB
         return a.brand.localeCompare(b.brand)
       })
     const total = brandList.reduce((sum, b) => sum + b.count, 0)

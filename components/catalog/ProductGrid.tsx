@@ -109,9 +109,9 @@ function groupProducts(
     const brandList: BrandGroup[] = Array.from(brands.entries())
       .map(([brand, items]) => ({ brand, category, products: items }))
       .sort((a, b) => {
-        if (b.products.length !== a.products.length) {
-          return b.products.length - a.products.length
-        }
+        const minA = Math.min(...a.products.map((p) => p.sortOrder ?? 0))
+        const minB = Math.min(...b.products.map((p) => p.sortOrder ?? 0))
+        if (minA !== minB) return minA - minB
         return a.brand.localeCompare(b.brand)
       })
     const count = brandList.reduce((sum, b) => sum + b.products.length, 0)
