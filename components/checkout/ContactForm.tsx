@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Send, User, MessageSquare, Eraser } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { normalizeTelegramUsername } from '@/lib/telegram'
+import { fetchTgSession } from '@/lib/tgSessionClient'
 import { useBooking } from '@/lib/context/booking-context'
 import {
   readCustomerProfile,
@@ -37,13 +38,10 @@ export function ContactForm() {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/tg/session')
-      .then((resp) => (resp.ok ? resp.json() : null))
-      .then((data) => {
-        if (cancelled || !data?.verified) return
-        const tg = typeof data.customerTelegram === 'string' ? data.customerTelegram : ''
-        if (!tg) return
-        setCustomerTelegram(normalizeTelegramUsername(tg))
+    fetchTgSession()
+      .then((info) => {
+        if (cancelled || !info.verified || !info.customerTelegram) return
+        setCustomerTelegram(info.customerTelegram)
         setTelegramVerified(true)
       })
       .catch(() => {})
