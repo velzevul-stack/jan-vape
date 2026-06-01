@@ -74,6 +74,28 @@ function createDataSource(): DataSource {
   })
 }
 
+async function runMigrations(ds: DataSource): Promise<void> {
+  const runner = ds.createQueryRunner()
+  try {
+    await runner.connect()
+    const columns = await runner.getTable('product_snapshots')
+    if (columns && !columns.findColumnByName('sort_order')) {
+      await runner.addColumn(
+        'product_snapshots',
+        new (await import('typeorm')).TableColumn({
+          name: 'sort_order',
+          type: 'int',
+          default: 0,
+          isNullable: false,
+        }),
+      )
+    }
+  } catch {
+  } finally {
+    await runner.release()
+  }
+}
+
 export async function getDataSource(): Promise<DataSource> {
   if (global.__dataSource && global.__dataSource.isInitialized) {
     return global.__dataSource
@@ -81,6 +103,7 @@ export async function getDataSource(): Promise<DataSource> {
 
   const ds = createDataSource()
   await ds.initialize()
+  await runMigrations(ds)
   global.__dataSource = ds
   return ds
 }
