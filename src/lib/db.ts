@@ -78,19 +78,23 @@ async function runMigrations(ds: DataSource): Promise<void> {
   const runner = ds.createQueryRunner()
   try {
     await runner.connect()
-    const columns = await runner.getTable('product_snapshots')
-    if (columns && !columns.findColumnByName('sort_order')) {
-      await runner.addColumn(
-        'product_snapshots',
-        new (await import('typeorm')).TableColumn({
-          name: 'sort_order',
-          type: 'int',
-          default: 0,
-          isNullable: false,
-        }),
+    const table = await runner.getTable('product_snapshots')
+    if (!table) return
+
+    if (table.findColumnByName('sortOrder')) return
+
+    if (table.findColumnByName('sort_order')) {
+      await runner.query(
+        'ALTER TABLE product_snapshots RENAME COLUMN sort_order TO "sortOrder"',
       )
+      return
     }
-  } catch {
+
+    await runner.query(
+      'ALTER TABLE product_snapshots ADD COLUMN "sortOrder" integer NOT NULL DEFAULT 0',
+    )
+  } catch (err) {
+    console.error('product_snapshots sortOrder migration failed', err)
   } finally {
     await runner.release()
   }
