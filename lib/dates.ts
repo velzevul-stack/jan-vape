@@ -31,6 +31,10 @@ export function buildStoreDateTime(isoDate: string, time: string): Date {
   return new Date(`${isoDate}T${time}:00${STORE_UTC_OFFSET}`)
 }
 
+export function storeTodayIso(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: STORE_TIMEZONE }).format(new Date())
+}
+
 export function storeDayBounds(isoDate: string): { start: Date; end: Date } {
   return {
     start: new Date(`${isoDate}T00:00:00${STORE_UTC_OFFSET}`),
