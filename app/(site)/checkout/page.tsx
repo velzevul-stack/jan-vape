@@ -247,6 +247,21 @@ export default function CheckoutPage() {
         addRecentAddress(customAddressText)
       }
 
+      const confirmationItems = lines.map((i) => ({
+        brand: i.product.brand,
+        flavor: i.product.flavor,
+        retailPrice: i.product.retailPrice,
+        quantity: i.quantity,
+      }))
+      if (confirmedDeliveryFee > 0) {
+        confirmationItems.push({
+          brand: 'Доставка',
+          flavor: deliveryZone?.name ?? '',
+          retailPrice: confirmedDeliveryFee,
+          quantity: 1,
+        })
+      }
+
       sessionStorage.setItem(
         `confirmation-${bookingNumber}`,
         JSON.stringify({
@@ -255,12 +270,7 @@ export default function CheckoutPage() {
           customerTelegram: normalizeTelegramUsername(customerTelegram),
           locationLabel,
           scheduledAt: buildStoreDateTime(pickupDate, pickupTime).toISOString(),
-          items: lines.map((i) => ({
-            brand: i.product.brand,
-            flavor: i.product.flavor,
-            retailPrice: i.product.retailPrice,
-            quantity: i.quantity,
-          })),
+          items: confirmationItems,
           total: orderTotal,
           deliveryFee: confirmedDeliveryFee,
           deliveryZoneName: deliveryZone?.name ?? null,

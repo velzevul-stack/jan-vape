@@ -5,6 +5,10 @@ import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { getRepo } from '@/src/lib/db'
 import { enqueueNotification } from '@/src/lib/notifier'
 import { enrichUserbotPayload } from '@/src/lib/customerTelegramUserId'
+import {
+  mapBookingProductLines,
+  withDeliveryInComposition,
+} from '@/src/lib/bookingComposition'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   const { id } = await context.params
@@ -13,7 +17,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const repo = await getRepo('WebBooking')
     const booking = await repo.findOne({
       where: { id },
-      relations: { location: true, customAddress: true },
+      relations: { location: true, customAddress: true, deliveryZone: true },
     })
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
@@ -42,6 +46,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           ? await productRepo.find({ where: { id: In(productIds) } })
           : []
       const productMap = new Map(products.map((p) => [p.id, p]))
+      const compositionItems = withDeliveryInComposition(
+        mapBookingProductLines(booking.items, productMap),
+        Number(booking.deliveryFee),
+        booking.deliveryZone?.name ?? null,
+      )
 
       const endpoint = joinEndpoint(userbotBase, '/events/booking-confirmed')
       const payload = await enrichUserbotPayload(
@@ -52,15 +61,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           customerTelegram: booking.customerTelegram,
           scheduledAt: booking.scheduledAt.toISOString(),
           locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
-          items: booking.items.map((item) => {
-            const product = productMap.get(item.productId)
-            return {
-              flavor: product?.flavor ?? '',
-              brand: product?.brand ?? '',
-              quantity: item.quantity,
-              price: item.retailPriceSnapshot,
-            }
-          }),
+          items: compositionItems,
           totalAmount: Number(booking.totalAmount),
         },
         booking,

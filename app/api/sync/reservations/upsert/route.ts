@@ -5,6 +5,7 @@ import { In } from 'typeorm'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
 import { entityTableNames, getDataSource, getRepo } from '@/src/lib/db'
 import { normalizeAddress } from '@/src/lib/normalize'
+import { findDeliveryZoneByName } from '@/src/lib/deliveryZoneResolve'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
 import { notifyBookingItemsChangedIfNeeded } from '@/src/lib/bookingItemsChangedNotify'
 import { notifyBookingRescheduled } from '@/src/lib/rescheduleWebBooking'
@@ -128,32 +129,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         let deliveryFee = existing ? Number(existing.deliveryFee) : 0
         let roundTripMinutes: number | null = existing?.roundTripMinutes ?? null
 
-        if (reservation.deliveryZoneName && reservation.deliveryAddressDetail) {
-          const zoneName = reservation.deliveryZoneName.trim()
-          const zones = await zoneRepo.find({ where: { isActive: true } })
-          const zone =
-            zones.find((z) => z.name.toLowerCase() === zoneName.toLowerCase()) ??
-            zones.find((z) =>
-              (z.aliases ?? []).some((alias: string) => alias.toLowerCase() === zoneName.toLowerCase()),
-            )
+        const zones = await zoneRepo.find({ where: { isActive: true } })
+
+        const applyDeliveryZone = async (
+          zone: (typeof zones)[number],
+          addressDetail: string | null,
+        ) => {
+          deliveryZoneId = zone.id
+          deliveryFee = Number(zone.deliveryFee)
+          roundTripMinutes = zone.roundTripMinutes
+          const detail = addressDetail?.trim() ?? ''
+          const addressText = detail ? `${zone.name}, ${detail}` : zone.name
+          const key = normalizeAddress(addressText)
+          let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
+          if (!addr) {
+            addr = addressRepo.create({
+              normalizedKey: key,
+              label: addressText,
+              salesCount: 0,
+              isPromoted: false,
+            })
+            await addressRepo.save(addr)
+          }
+          customAddressId = addr.id
+          locationId = null
+        }
+
+        if (reservation.deliveryZoneName) {
+          const zone = findDeliveryZoneByName(zones, reservation.deliveryZoneName.trim())
           if (zone) {
-            deliveryZoneId = zone.id
-            deliveryFee = Number(zone.deliveryFee)
-            roundTripMinutes = zone.roundTripMinutes
-            const addressText = `${zone.name}, ${reservation.deliveryAddressDetail.trim()}`
-            const key = normalizeAddress(addressText)
-            let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
-            if (!addr) {
-              addr = addressRepo.create({
-                normalizedKey: key,
-                label: addressText,
-                salesCount: 0,
-                isPromoted: false,
-              })
-              await addressRepo.save(addr)
-            }
-            customAddressId = addr.id
-            locationId = null
+            await applyDeliveryZone(zone, reservation.deliveryAddressDetail ?? null)
           }
         } else if (reservation.place) {
           const placeName = reservation.place.trim()
@@ -165,6 +170,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             deliveryZoneId = null
             deliveryFee = 0
             roundTripMinutes = null
+          } else {
+            const zone = findDeliveryZoneByName(zones, placeName)
+            if (zone) {
+              await applyDeliveryZone(zone, null)
+            }
           }
         }
 

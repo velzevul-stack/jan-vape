@@ -61,7 +61,7 @@ export const DELIVERY_ZONE_SEEDS: DeliveryZoneSeed[] = [
     name: 'Майск',
     aliases: ['майск'],
     roundTripMinutes: 25,
-    deliveryFee: 5,
+    deliveryFee: 10,
     sortOrder: 60,
   },
   {

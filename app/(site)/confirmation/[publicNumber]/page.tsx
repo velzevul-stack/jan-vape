@@ -58,6 +58,10 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
       })
     : null
 
+  const deliveryInItems = snapshot?.items.some(
+    (item) => item.brand.trim().toLowerCase() === 'доставка',
+  )
+
   if (!snapshot) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -162,17 +166,25 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
               СОСТАВ ЗАКАЗА
             </h3>
             <div className="space-y-3">
-              {snapshot.items.map((item, idx) => (
+              {snapshot.items.map((item, idx) => {
+                const isDelivery = item.brand.trim().toLowerCase() === 'доставка'
+                const title = isDelivery
+                  ? (item.flavor.trim() ? `Доставка (${item.flavor.trim()})` : 'Доставка')
+                  : item.brand
+                const subtitle = isDelivery ? '' : item.flavor
+                return (
                 <div key={idx} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card-inner">
                       <span className="text-xs font-bold text-text-on-dark">
-                        {item.brand.slice(0, 2).toUpperCase()}
+                        {isDelivery ? 'Д' : item.brand.slice(0, 2).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <div className="text-sm text-text-on-card">{item.brand}</div>
-                      <div className="text-xs text-text-muted">{item.flavor}</div>
+                      <div className="text-sm text-text-on-card">{title}</div>
+                      {subtitle ? (
+                        <div className="text-xs text-text-muted">{subtitle}</div>
+                      ) : null}
                     </div>
                   </div>
                   <div className="text-right">
@@ -182,10 +194,11 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
                     <div className="text-xs text-text-muted">x{item.quantity}</div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
             <div className="mt-4 space-y-2 border-t border-text-on-card/10 pt-4">
-              {(snapshot.deliveryFee ?? 0) > 0 && (
+              {(snapshot.deliveryFee ?? 0) > 0 && !deliveryInItems && (
                 <div className="flex items-center justify-between text-sm text-text-muted">
                   <span>Доставка{snapshot.deliveryZoneName ? ` (${snapshot.deliveryZoneName})` : ''}</span>
                   <span className="tabular-nums text-text-on-card">{formatPrice(snapshot.deliveryFee ?? 0)}</span>

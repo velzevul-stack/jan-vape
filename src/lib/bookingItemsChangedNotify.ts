@@ -128,7 +128,23 @@ export async function notifyBookingItemsChangedIfNeeded(params: {
   const diff = computeBookingItemsDiff(toLines(previousItems), toLines(nextItems))
   if (diff.length === 0) return
 
-  const newLines = toLines(nextItems)
+  let newLines = toLines(nextItems)
+  const deliveryFee = Number(booking.deliveryFee)
+  if (deliveryFee > 0) {
+    const hasDelivery = newLines.some((line) =>
+      line.displayName.trim().toLowerCase().startsWith('доставка'),
+    )
+    if (!hasDelivery) {
+      let zoneName: string | null = null
+      if (booking.deliveryZoneId) {
+        const zoneRepo = await getRepo('DeliveryZone')
+        const zone = await zoneRepo.findOne({ where: { id: booking.deliveryZoneId } })
+        zoneName = zone?.name ?? null
+      }
+      const label = zoneName ? `Доставка (${zoneName})` : 'Доставка'
+      newLines = [...newLines, { key: 'delivery', displayName: label, quantity: 1 }]
+    }
+  }
   const userbotBase = process.env.NOTIFY_USERBOT_URL
   if (!userbotBase) return
 

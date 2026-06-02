@@ -93,6 +93,21 @@ function fuzzyThreshold(variant: string): number {
   return 2
 }
 
+export function findDeliveryZoneByName(
+  zones: DeliveryZoneLike[],
+  name: string,
+): DeliveryZoneLike | null {
+  const key = name.trim().toLowerCase()
+  if (!key) return null
+  return (
+    zones.find((zone) => zone.name.trim().toLowerCase() === key)
+    ?? zones.find((zone) =>
+      (zone.aliases ?? []).some((alias) => alias.trim().toLowerCase() === key),
+    )
+    ?? null
+  )
+}
+
 export function resolveDeliveryZone(
   text: string,
   zones: DeliveryZoneLike[],

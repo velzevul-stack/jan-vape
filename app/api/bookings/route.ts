@@ -16,6 +16,10 @@ import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { assertDeliverySlotAvailable } from '@/src/lib/deliveryBookingValidation'
+import {
+  mapBookingProductLines,
+  withDeliveryInComposition,
+} from '@/src/lib/bookingComposition'
 import { resolveCustomerTelegramUserId } from '@/src/lib/customerTelegramUserId'
 import {
   findBlockedSlotsForPickup,
@@ -349,15 +353,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       customAddress: savedBooking.customAddressLabel,
       deliveryZone: savedBooking.deliveryZoneName,
       deliveryFee: savedBooking.deliveryFee,
-      items: savedBooking.itemsSnapshot.map((item) => {
-        const product = productMap.get(item.productId)
-        return {
-          flavor: product?.flavor ?? '',
-          brand: product?.brand ?? '',
-          quantity: item.quantity,
-          price: item.retailPriceSnapshot,
-        }
-      }),
+      items: withDeliveryInComposition(
+        mapBookingProductLines(savedBooking.itemsSnapshot, productMap),
+        savedBooking.deliveryFee,
+        savedBooking.deliveryZoneName,
+      ),
       totalAmount: savedBooking.totalAmount,
       comment: savedBooking.comment,
     }

@@ -10,6 +10,10 @@ import { markCustomerTrusted } from '@/src/lib/customerStats'
 import { notifyAdminBookingPendingResolved } from '@/src/lib/adminBookingNotify'
 import { enqueueBookingUserbotNotification } from '@/src/lib/notifier'
 import { enrichUserbotPayload } from '@/src/lib/customerTelegramUserId'
+import {
+  mapBookingProductLines,
+  withDeliveryInComposition,
+} from '@/src/lib/bookingComposition'
 
 const UpdateSchema = z.object({
   updates: z.array(
@@ -140,7 +144,7 @@ async function dispatchUserbotEvents(
   const bookingRepo = await getRepo('WebBooking')
   const bookings = await bookingRepo.find({
     where: { id: In(changes.map((c) => c.bookingId)) },
-    relations: { location: true, customAddress: true },
+    relations: { location: true, customAddress: true, deliveryZone: true },
   })
 
   const productRepo = await getRepo('ProductSnapshot')
@@ -167,15 +171,11 @@ async function dispatchUserbotEvents(
           customerTelegram: booking.customerTelegram,
           scheduledAt: booking.scheduledAt.toISOString(),
           locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
-          items: booking.items.map((item) => {
-            const product = productMap.get(item.productId)
-            return {
-              flavor: product?.flavor ?? '',
-              brand: product?.brand ?? '',
-              quantity: item.quantity,
-              price: item.retailPriceSnapshot,
-            }
-          }),
+          items: withDeliveryInComposition(
+            mapBookingProductLines(booking.items, productMap),
+            Number(booking.deliveryFee),
+            booking.deliveryZone?.name ?? null,
+          ),
           totalAmount: Number(booking.totalAmount),
         },
         booking,
