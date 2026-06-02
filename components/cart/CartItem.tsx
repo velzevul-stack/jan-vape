@@ -23,7 +23,7 @@ export function CartItem({ item }: CartItemProps) {
   const itemTotal = product.retailPrice * quantity
 
   return (
-    <div className="surface-card group/cart relative flex gap-4 rounded-2xl p-4 transition-all duration-200 hover:border-accent-primary/30">
+    <div className="surface-card group/cart relative box-border flex min-w-0 max-w-full gap-3 rounded-2xl p-3 transition-all duration-200 hover:border-accent-primary/30 sm:gap-4 sm:p-4">
       <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-accent-mist via-card-inner to-card-deep">
         <span className="font-display text-xl font-extrabold tracking-wider text-accent-soft">
           {product.brand.slice(0, 2).toUpperCase()}

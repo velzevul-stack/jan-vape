@@ -25,6 +25,7 @@ type Mode = 'list' | 'delivery'
 
 interface PickupLocationSelectorProps {
   variant?: 'cards' | 'compact'
+  layout?: 'default' | 'narrow'
   className?: string
   collapseToken?: number
 }
@@ -40,6 +41,7 @@ function zoneToSelection(zone: DeliveryZoneOption) {
 
 export function PickupLocationSelector({
   variant = 'cards',
+  layout = 'default',
   className,
   collapseToken = 0,
 }: PickupLocationSelectorProps) {
@@ -302,11 +304,16 @@ export function PickupLocationSelector({
     )
   }
 
+  const locationGridClass =
+    layout === 'narrow'
+      ? 'grid grid-cols-1 gap-3'
+      : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3'
+
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('@container min-w-0 max-w-full space-y-3', className)}>
       {mode === 'list' ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className={locationGridClass}>
             {locations.map((loc) => (
               <LocationCard
                 key={loc.id}
@@ -400,8 +407,8 @@ export function PickupLocationSelector({
             </div>
           )}
 
-          <div className="rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-3 sm:p-4 shadow-lg shadow-accent-primary/5">
-            <p className="mb-2 text-center text-sm font-bold tracking-wide text-accent-soft sm:text-base md:text-lg">
+          <div className="min-w-0 rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-3 shadow-lg shadow-accent-primary/5 sm:p-4">
+            <p className="mb-2 text-center text-sm font-bold tracking-wide text-accent-soft">
               АДРЕС ИЛИ МЕСТО ДОСТАВКИ
             </p>
             <p className="mb-3 text-center text-xs text-text-muted sm:text-sm">
@@ -439,7 +446,7 @@ export function PickupLocationSelector({
                 disabled={!deliveryZoneHint}
                 autoComplete="street-address"
                 className={cn(
-                  'h-14 w-full max-w-full rounded-2xl border-2 bg-elevated py-3 pl-10 pr-10 text-base font-medium text-text-on-dark caret-accent-primary shadow-inner shadow-black/10 placeholder:text-sm placeholder:font-normal placeholder:text-text-faint focus:border-accent-primary focus:outline-none focus:ring-4 focus:ring-accent-primary/15 sm:h-16 sm:pl-12 sm:pr-12 sm:text-lg',
+                  'box-border h-12 w-full min-w-0 max-w-full rounded-2xl border-2 bg-elevated py-3 pl-10 pr-10 text-base font-medium text-text-on-dark caret-accent-primary shadow-inner shadow-black/10 placeholder:text-sm placeholder:font-normal placeholder:text-text-faint focus:border-accent-primary focus:outline-none focus:ring-4 focus:ring-accent-primary/15 sm:h-14 sm:pl-12 sm:pr-12',
                   deliveryZoneHint
                     ? 'border-accent-primary/40'
                     : 'cursor-not-allowed border-border-on-dark opacity-60',
@@ -551,13 +558,13 @@ function LocationCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex flex-col items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all duration-200',
+        'flex min-w-0 w-full max-w-full flex-col items-start gap-3 rounded-2xl border-2 p-3 text-left transition-all duration-200 sm:p-4',
         selected
           ? 'border-accent-primary bg-accent-primary/10'
           : 'border-text-on-card/10 bg-card hover:border-accent-primary/40',
       )}
     >
-      <div className="flex w-full items-start justify-between gap-2">
+      <div className="flex w-full min-w-0 items-start justify-between gap-2">
         <div
           className={cn(
             'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
@@ -567,16 +574,16 @@ function LocationCard({
           <MapPin className="h-5 w-5" />
         </div>
       </div>
-      <div>
+      <div className="min-w-0 w-full">
         <div
           className={cn(
-            'font-display text-base font-bold tracking-wide',
+            'break-words font-display text-base font-bold tracking-wide',
             selected ? 'text-accent-primary' : 'text-text-on-card',
           )}
         >
           {location.name}
         </div>
-        <div className="mt-1 text-sm text-text-muted">{location.address}</div>
+        <div className="mt-1 break-words text-sm text-text-muted">{location.address}</div>
         <div className="mt-1 text-xs text-text-muted">
           {location.workDayStart} — {location.workDayEnd}
         </div>

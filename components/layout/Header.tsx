@@ -36,7 +36,7 @@ export function Header() {
       )}
     >
       <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 md:h-20 md:px-6">
+      <div className="mx-auto box-border flex h-16 w-full max-w-7xl min-w-0 items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:h-20 md:px-6">
         <Link href="/" className="group flex min-w-0 shrink items-center gap-2.5">
           <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-soft via-accent-primary to-accent-ember text-text-on-accent shadow-lg shadow-accent-primary/30 md:h-10 md:w-10">
             <span className="font-display text-lg font-black leading-none">J</span>
@@ -86,7 +86,7 @@ export function Header() {
                   className="fixed inset-0 z-10 cursor-default bg-canvas/50"
                   onClick={() => setIsOpen(false)}
                 />
-                <div className="animate-float-up absolute right-0 top-full z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-text-on-card/10 bg-card p-2 shadow-2xl shadow-black/40">
+                <div className="animate-float-up absolute right-0 top-full z-20 mt-2 w-[min(20rem,calc(100%-0.5rem))] max-w-[calc(100dvw-2rem)] rounded-2xl border border-text-on-card/10 bg-card p-2 shadow-2xl shadow-black/40">
                   <div className="mb-1 flex items-center justify-between px-3 py-2">
                     <h3 className="font-display text-[11px] font-bold tracking-[0.22em] text-text-faint">
                       ТОЧКИ ВЫДАЧИ

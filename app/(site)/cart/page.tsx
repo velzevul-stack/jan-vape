@@ -46,7 +46,7 @@ export default function CartPage() {
     return (
       <div className="flex min-h-screen flex-col overflow-x-hidden">
         <Header />
-        <main className="flex flex-1 items-center justify-center px-4 py-8">
+        <main className="box-border flex w-full min-w-0 max-w-full flex-1 items-center justify-center overflow-x-clip py-8 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
           <EmptyCart />
         </main>
         <Footer />
@@ -58,8 +58,8 @@ export default function CartPage() {
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       <Header />
 
-      <main className="flex-1 px-4 py-6 pb-28 md:px-6 md:py-10 lg:pb-10">
-        <PageContainer maxWidth="cart">
+      <main className="box-border w-full min-w-0 max-w-full flex-1 overflow-x-clip py-6 pb-28 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:px-6 md:py-10 lg:pb-10">
+        <PageContainer maxWidth="cart" className="max-w-full">
           <Link
             href="/"
             className="mb-6 inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-accent-soft"
@@ -74,9 +74,9 @@ export default function CartPage() {
             </div>
           )}
 
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <div>
-              <h1 className="font-display text-4xl font-black tracking-wider text-text-on-dark md:text-5xl">
+          <div className="mb-8 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="font-display text-3xl font-black tracking-wide text-text-on-dark sm:text-4xl md:text-5xl md:tracking-wider">
                 КОРЗИНА
               </h1>
               <p className="mt-2 text-sm text-text-muted">
@@ -86,22 +86,22 @@ export default function CartPage() {
             </div>
             <button
               onClick={clearCart}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border-on-dark bg-elevated px-3 py-2 text-xs text-text-muted transition-colors hover:border-status-danger/40 hover:text-status-danger"
+              className="inline-flex shrink-0 self-start items-center gap-1.5 rounded-full border border-border-on-dark bg-elevated px-3 py-2 text-xs text-text-muted transition-colors hover:border-status-danger/40 hover:text-status-danger sm:self-auto"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Очистить
             </button>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="stagger-fade space-y-3">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="stagger-fade min-w-0 space-y-3">
               {items.map((item) => (
                 <CartItem key={item.product.id} item={item} />
               ))}
             </div>
 
-            <aside className="lg:sticky lg:top-[6rem] lg:self-start">
-              <div className="surface-card rounded-3xl p-6">
+            <aside className="min-w-0 w-full lg:sticky lg:top-[6rem] lg:self-start">
+              <div className="surface-card box-border min-w-0 w-full max-w-full rounded-3xl p-4 sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-display text-base font-bold tracking-wider text-text-muted">
                     ИТОГО
@@ -115,7 +115,7 @@ export default function CartPage() {
                   <h3 className="mb-3 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                     МЕСТО ПОЛУЧЕНИЯ
                   </h3>
-                  <PickupLocationSelector collapseToken={selectorCollapse} />
+                  <PickupLocationSelector collapseToken={selectorCollapse} layout="narrow" />
                 </div>
 
                 <button
@@ -146,7 +146,7 @@ export default function CartPage() {
       <DeliveryConfirmDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen} />
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border-on-dark bg-canvas/95 px-4 pt-3 backdrop-blur-sm lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 box-border border-t border-border-on-dark bg-canvas/95 pt-3 backdrop-blur-sm lg:hidden pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <button
