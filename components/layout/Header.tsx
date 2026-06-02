@@ -45,7 +45,7 @@ export function Header() {
             </span>
           </span>
           <span className="flex flex-col leading-tight">
-            <span className="font-display text-base font-extrabold tracking-[0.18em] text-text-on-dark transition-colors group-hover:text-accent-soft sm:text-xl">
+            <span className="font-display text-sm font-extrabold tracking-[0.12em] text-text-on-dark transition-colors group-hover:text-accent-soft sm:text-base sm:tracking-[0.18em] md:text-xl">
               JAN-VAPE
             </span>
             <span className="hidden text-[10px] uppercase tracking-[0.32em] text-text-muted sm:block">

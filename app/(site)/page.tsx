@@ -8,7 +8,7 @@ import { CatalogLayout } from '@/components/layout/CatalogLayout'
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
       <Header />
 
       <MainWithCartPadding>

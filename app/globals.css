@@ -114,6 +114,9 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -124,6 +127,8 @@
       radial-gradient(900px 500px at 100% 110%, rgba(90, 224, 176, 0.04), transparent 65%),
       var(--bg-canvas);
     min-height: 100vh;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 
   ::selection {

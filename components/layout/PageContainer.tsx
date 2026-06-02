@@ -26,7 +26,7 @@ export function PageContainer({
   return (
     <div
       className={cn(
-        'mx-auto w-full',
+        'mx-auto w-full min-w-0',
         maxWidthClasses[maxWidth],
         !alignWithCatalog && 'lg:mx-auto',
         alignWithCatalog && 'lg:mx-0',

@@ -44,7 +44,7 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col overflow-x-hidden">
         <Header />
         <main className="flex flex-1 items-center justify-center px-4 py-8">
           <EmptyCart />
@@ -55,7 +55,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
       <Header />
 
       <main className="flex-1 px-4 py-6 pb-28 md:px-6 md:py-10 lg:pb-10">

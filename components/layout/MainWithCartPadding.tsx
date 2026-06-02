@@ -15,7 +15,7 @@ export function MainWithCartPadding({
   return (
     <main
       className={cn(
-        'flex-1 px-4 py-6 md:px-6 md:py-8',
+        'flex-1 min-w-0 px-4 py-6 md:px-6 md:py-8',
         totalItems > 0 && 'pb-24 lg:pb-8',
         className
       )}

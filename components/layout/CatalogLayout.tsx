@@ -37,6 +37,7 @@ export function CatalogLayout() {
 
   return (
     <div
+      id="catalog"
       className={
         showCart
           ? 'lg:grid lg:grid-cols-[16rem_minmax(0,1fr)_18rem] lg:items-start lg:gap-6 xl:grid-cols-[17rem_minmax(0,1fr)_20rem] xl:gap-8'

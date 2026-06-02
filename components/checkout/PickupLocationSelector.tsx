@@ -400,16 +400,16 @@ export function PickupLocationSelector({
             </div>
           )}
 
-          <div className="rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-4 shadow-lg shadow-accent-primary/5">
-            <p className="mb-2 text-center text-base font-bold tracking-wide text-accent-soft sm:text-lg">
+          <div className="rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-3 sm:p-4 shadow-lg shadow-accent-primary/5">
+            <p className="mb-2 text-center text-sm font-bold tracking-wide text-accent-soft sm:text-base md:text-lg">
               АДРЕС ИЛИ МЕСТО ДОСТАВКИ
             </p>
-            <p className="mb-3 text-center text-sm text-text-muted">
+            <p className="mb-3 text-center text-xs text-text-muted sm:text-sm">
               Напишите адрес или название места — куда привезти заказ
             </p>
             <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
-                <Truck className="h-5 w-5 text-accent-primary" />
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center sm:left-4">
+                <Truck className="h-4 w-4 text-accent-primary sm:h-5 sm:w-5" />
               </div>
               <input
                 ref={inputRef}
@@ -439,7 +439,7 @@ export function PickupLocationSelector({
                 disabled={!deliveryZoneHint}
                 autoComplete="street-address"
                 className={cn(
-                  'h-16 w-full rounded-2xl border-2 bg-elevated py-4 pl-12 pr-12 text-lg font-medium text-text-on-dark caret-accent-primary shadow-inner shadow-black/10 placeholder:text-base placeholder:font-normal placeholder:text-text-faint focus:border-accent-primary focus:outline-none focus:ring-4 focus:ring-accent-primary/15',
+                  'h-14 w-full max-w-full rounded-2xl border-2 bg-elevated py-3 pl-10 pr-10 text-base font-medium text-text-on-dark caret-accent-primary shadow-inner shadow-black/10 placeholder:text-sm placeholder:font-normal placeholder:text-text-faint focus:border-accent-primary focus:outline-none focus:ring-4 focus:ring-accent-primary/15 sm:h-16 sm:pl-12 sm:pr-12 sm:text-lg',
                   deliveryZoneHint
                     ? 'border-accent-primary/40'
                     : 'cursor-not-allowed border-border-on-dark opacity-60',
@@ -448,7 +448,7 @@ export function PickupLocationSelector({
               <button
                 type="button"
                 onClick={clearDeliveryInput}
-                className="absolute inset-y-0 right-4 flex items-center text-text-muted hover:text-text-on-dark"
+                className="absolute inset-y-0 right-3 flex items-center text-text-muted hover:text-text-on-dark sm:right-4"
                 aria-label="Очистить адрес"
               >
                 <X className="h-5 w-5" />
