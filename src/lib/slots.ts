@@ -64,6 +64,11 @@ export function generatePickupSlots(
       continue
     }
 
+    if (bookingsCount >= (location.maxBookingsPerSlot ?? 1)) {
+      slots.push({ time: timeStr, available: false, bookingsCount, reason: 'busy' })
+      continue
+    }
+
     slots.push({ time: timeStr, available: true, bookingsCount })
   }
 

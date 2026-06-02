@@ -7,6 +7,7 @@ import { entityTableNames, getDataSource, getRepo } from '@/src/lib/db'
 import { normalizeAddress } from '@/src/lib/normalize'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
 import { notifyBookingItemsChangedIfNeeded } from '@/src/lib/bookingItemsChangedNotify'
+import { notifyBookingRescheduled } from '@/src/lib/rescheduleWebBooking'
 
 const ReservationItemSchema = z.object({
   externalId: z.number().int().positive(),
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         retailPriceSnapshot: number
       }> = []
       let existingBookingId: string | null = null
+      let previousScheduledAt: Date | null = null
 
       await ds.transaction(async (txn) => {
         const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
@@ -171,6 +173,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (existing) {
           previousItems = [...(existing.items ?? [])]
           existingBookingId = existing.id
+          previousScheduledAt = existing.scheduledAt ? new Date(existing.scheduledAt) : null
           const updateData: Record<string, unknown> = {
             customerName: reservation.customerName.trim(),
             scheduledAt,
@@ -231,6 +234,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               displayNameByExternalId,
               notifyCustomer,
             })
+
+            const prevMs = previousScheduledAt?.getTime() ?? 0
+            const nextMs = new Date(booking.scheduledAt).getTime()
+            if (notifyCustomer && prevMs && nextMs && prevMs !== nextMs) {
+              try {
+                await notifyBookingRescheduled(booking)
+              } catch (err) {
+                console.error('[reservations/upsert] notify rescheduled failed', err)
+              }
+            }
           }
         } catch (err) {
           console.error('[reservations/upsert] notify items changed failed', err)

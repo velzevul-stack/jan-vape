@@ -12,7 +12,7 @@ import {
 } from './blockedSlots'
 import { storeDayBounds } from '@/lib/dates'
 
-function joinEndpoint(base: string, path: string): string {
+export function joinEndpoint(base: string, path: string): string {
   if (!base) return path
   const trimmed = base.replace(/\/+$/, '')
   if (trimmed.endsWith('/events') && path.startsWith('/events')) {
@@ -160,4 +160,48 @@ export async function rescheduleWebBooking(
   revalidatePath('/')
 
   return booking
+}
+
+export async function notifyBookingRescheduled(
+  booking: WebBooking & { location?: { name: string } | null; customAddress?: { label: string } | null },
+): Promise<void> {
+  const tg = booking.customerTelegram?.trim() ?? ''
+  if (!tg || tg === '@app') return
+  if (booking.source !== 'web') return
+  if (booking.status === 'cancelled' || booking.status === 'completed') return
+
+  const userbotBase = process.env.NOTIFY_USERBOT_URL
+  if (!userbotBase) return
+
+  const productRepo = await getRepo('ProductSnapshot')
+  const productIds = Array.from(new Set(booking.items.map((item) => item.productId)))
+  const products =
+    productIds.length > 0
+      ? await productRepo.find({ where: { id: In(productIds) } })
+      : []
+  const productMap = new Map(products.map((p) => [p.id, p]))
+
+  const endpoint = joinEndpoint(userbotBase, '/events/booking-rescheduled')
+  const payload = await enrichUserbotPayload(
+    {
+      type: 'booking_rescheduled',
+      bookingId: booking.id,
+      publicNumber: booking.publicNumber,
+      customerTelegram: booking.customerTelegram,
+      scheduledAt: new Date(booking.scheduledAt).toISOString(),
+      locationLabel: booking.location?.name ?? booking.customAddress?.label ?? null,
+      items: booking.items.map((item) => {
+        const product = productMap.get(item.productId)
+        return {
+          flavor: product?.flavor ?? '',
+          brand: product?.brand ?? '',
+          quantity: item.quantity,
+          price: item.retailPriceSnapshot,
+        }
+      }),
+      totalAmount: Number(booking.totalAmount),
+    },
+    booking,
+  )
+  await enqueueNotification(endpoint, payload)
 }

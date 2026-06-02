@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, MapPin, Truck, Check } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, Truck, Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatPrice, formatDate } from '@/lib/mock-data'
 import { buildStoreDateTime } from '@/lib/dates'
@@ -77,6 +77,12 @@ export default function CheckoutPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    fulfillment?: boolean
+    slot?: boolean
+    name?: boolean
+    telegram?: boolean
+  }>({})
 
   useEffect(() => {
     if (items.length === 0) return
@@ -107,11 +113,55 @@ export default function CheckoutPage() {
   const fulfillmentReady = isPickupSelected || isDeliverySelected
   const canSubmit =
     fulfillmentReady && isSlotSelected && isNameValid && isTelegramValid && items.length > 0
+
+  useEffect(() => {
+    if (fulfillmentReady) setFieldErrors((e) => ({ ...e, fulfillment: false }))
+  }, [fulfillmentReady])
+  useEffect(() => {
+    if (isSlotSelected && pickupDate && pickupTime) setFieldErrors((e) => ({ ...e, slot: false }))
+  }, [isSlotSelected, pickupDate, pickupTime])
+  useEffect(() => {
+    if (isNameValid) setFieldErrors((e) => ({ ...e, name: false }))
+  }, [isNameValid])
+  useEffect(() => {
+    if (isTelegramValid) setFieldErrors((e) => ({ ...e, telegram: false }))
+  }, [isTelegramValid])
   const confirmedDeliveryFee = isDeliverySelected ? deliveryFee : 0
   const orderTotal = totalPrice + confirmedDeliveryFee
 
+  const scrollToFirstError = useCallback(() => {
+    const errors = {
+      fulfillment: !fulfillmentReady,
+      slot: !isSlotSelected || !pickupDate || !pickupTime,
+      name: !isNameValid,
+      telegram: !isTelegramValid,
+    }
+    setFieldErrors(errors)
+    const sectionIds: Record<string, string> = {
+      fulfillment: 'checkout-fulfillment',
+      slot: 'checkout-slot',
+      name: 'name',
+      telegram: 'telegram',
+    }
+    for (const [key, hasError] of Object.entries(errors)) {
+      if (hasError) {
+        const el = document.getElementById(sectionIds[key])
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          if (el.tagName === 'INPUT') setTimeout(() => el.focus(), 300)
+        }
+        break
+      }
+    }
+  }, [fulfillmentReady, isSlotSelected, pickupDate, pickupTime, isNameValid, isTelegramValid])
+
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit || isSubmitting || !pickupDate || !pickupTime) return
+    if (isSubmitting) return
+    if (!canSubmit || !pickupDate || !pickupTime) {
+      scrollToFirstError()
+      return
+    }
+    setFieldErrors({})
 
     setIsSubmitting(true)
     setSubmitError(null)
@@ -358,10 +408,22 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div>
+              <div
+                id="checkout-fulfillment"
+                className={cn(
+                  'rounded-3xl transition-all',
+                  fieldErrors.fulfillment && 'ring-2 ring-status-danger',
+                )}
+              >
                 <h3 className="mb-4 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
                   {isDeliverySelected && !isPickupSelected ? 'АДРЕС ДОСТАВКИ' : 'МЕСТО ПОЛУЧЕНИЯ'}
                 </h3>
+                {fieldErrors.fulfillment && (
+                  <p className="mb-2 flex items-center gap-1.5 text-xs text-status-danger">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    Выберите место или укажите адрес доставки
+                  </p>
+                )}
                 {(isPickupSelected || isDeliverySelected) ? (
                   <div className="flex items-center gap-4 rounded-3xl border border-accent-primary/30 bg-elevated p-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-primary shadow-lg shadow-accent-primary/30">
@@ -396,11 +458,37 @@ export default function CheckoutPage() {
                 ) : null}
               </div>
 
-              <DatePickerStrip />
+              <div
+                id="checkout-slot"
+                className={cn(
+                  'rounded-3xl transition-all',
+                  fieldErrors.slot && 'ring-2 ring-status-danger',
+                )}
+              >
+                {fieldErrors.slot && (
+                  <p className="mb-2 flex items-center gap-1.5 text-xs text-status-danger">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    Выберите дату и время
+                  </p>
+                )}
+                <DatePickerStrip />
+                <TimeSlotGrid />
+              </div>
 
-              <TimeSlotGrid />
-
-              <ContactForm />
+              <div
+                className={cn(
+                  'rounded-3xl transition-all',
+                  (fieldErrors.name || fieldErrors.telegram) && 'ring-2 ring-status-danger',
+                )}
+              >
+                {(fieldErrors.name || fieldErrors.telegram) && (
+                  <p className="mb-2 flex items-center gap-1.5 text-xs text-status-danger">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {fieldErrors.name ? 'Введите имя (минимум 2 символа)' : 'Введите корректный Telegram (например @username)'}
+                  </p>
+                )}
+                <ContactForm />
+              </div>
             </div>
 
             <div className="hidden lg:block lg:col-span-2">
@@ -481,12 +569,12 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={!canSubmit || isSubmitting}
+                  disabled={isSubmitting}
                   className={cn(
                     'flex h-14 w-full items-center justify-center gap-2 rounded-full',
                     'font-display text-base font-extrabold uppercase tracking-wider',
                     'transition-all duration-200',
-                    canSubmit && !isSubmitting
+                    !isSubmitting
                       ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
                       : 'cursor-not-allowed bg-card-inner text-text-faint',
                   )}
@@ -531,11 +619,11 @@ export default function CheckoutPage() {
           </div>
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit || isSubmitting}
+            disabled={isSubmitting}
             className={cn(
               'flex h-12 flex-1 items-center justify-center gap-2 rounded-full',
               'font-display text-sm font-extrabold uppercase tracking-wider transition-all duration-200',
-              canSubmit && !isSubmitting
+              !isSubmitting
                 ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 active:scale-[0.98]'
                 : 'cursor-not-allowed bg-card-inner text-text-faint',
             )}

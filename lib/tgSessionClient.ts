@@ -2,6 +2,8 @@ import { normalizeTelegramUsername } from '@/lib/telegram'
 
 export const UNVERIFIED_MAX_CART_QUANTITY = 5
 
+const TG_SESSION_KEY = 'tg_verified_v1'
+
 export type TgSessionInfo = {
   verified: boolean
   customerTelegram?: string
@@ -22,6 +24,20 @@ function cleanUrlParams(keys: string[]): void {
   const search = url.searchParams.toString()
   const next = url.pathname + (search ? `?${search}` : '') + url.hash
   window.history.replaceState({}, '', next)
+}
+
+function saveTgToStorage(tg: string): void {
+  try {
+    sessionStorage.setItem(TG_SESSION_KEY, tg)
+  } catch {}
+}
+
+function loadTgFromStorage(): string | null {
+  try {
+    return sessionStorage.getItem(TG_SESSION_KEY)
+  } catch {
+    return null
+  }
 }
 
 function mapSession(data: Record<string, unknown> | null): TgSessionInfo {
@@ -58,13 +74,25 @@ export async function fetchTgSession(): Promise<TgSessionInfo> {
       })
       if (resp.ok) {
         cleanUrlParams(['vx', 'tg', 'verified'])
-        return mapSession((await resp.json()) as Record<string, unknown>)
+        const info = mapSession((await resp.json()) as Record<string, unknown>)
+        if (info.verified && info.customerTelegram) {
+          saveTgToStorage(info.customerTelegram)
+        }
+        return info
       }
     } catch {
     }
   }
 
   const tgRaw = params.get('tg')?.trim()
+
+  if (!tgRaw) {
+    const cached = loadTgFromStorage()
+    if (cached) {
+      return { verified: true, customerTelegram: cached, maxCartQuantity: null }
+    }
+  }
+
   const sessionUrl = tgRaw
     ? `/api/tg/session?tg=${encodeURIComponent(normalizeTelegramUsername(decodeURIComponent(tgRaw)))}`
     : '/api/tg/session'
@@ -73,8 +101,9 @@ export async function fetchTgSession(): Promise<TgSessionInfo> {
     const resp = await fetch(sessionUrl)
     const data = resp.ok ? ((await resp.json()) as Record<string, unknown>) : null
     const info = mapSession(data)
-    if (info.verified && tgRaw) {
-      cleanUrlParams(['tg', 'verified'])
+    if (info.verified) {
+      if (tgRaw) cleanUrlParams(['tg', 'verified'])
+      if (info.customerTelegram) saveTgToStorage(info.customerTelegram)
     }
     return info
   } catch {

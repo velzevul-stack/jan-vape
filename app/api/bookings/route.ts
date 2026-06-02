@@ -158,6 +158,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         )
         return
       }
+
+      const step = loc.slotStepMinutes || 5
+      const slotEnd = new Date(scheduledAt.getTime() + step * 60 * 1000)
+      const existingAtSlot = await bookingRepo
+        .createQueryBuilder('wb')
+        .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+        .andWhere('wb.locationId = :locationId', { locationId: loc.id })
+        .andWhere('wb.scheduledAt >= :start AND wb.scheduledAt < :end', {
+          start: scheduledAt.toISOString(),
+          end: slotEnd.toISOString(),
+        })
+        .getCount()
+      if (existingAtSlot >= (loc.maxBookingsPerSlot ?? 1)) {
+        errorResponse = NextResponse.json(
+          { error: 'Time slot is fully booked', code: 'slot_busy' },
+          { status: 409 },
+        )
+        return
+      }
     } else if (data.customAddressText && data.deliveryZoneId) {
       const zone = await zoneRepo.findOne({ where: { id: data.deliveryZoneId, isActive: true } })
       if (!zone) {
