@@ -74,7 +74,7 @@ export default function CartPage() {
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       <Header />
 
-      <main className="box-border w-full min-w-0 max-w-full flex-1 overflow-x-clip py-6 pb-28 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:px-6 md:py-10 lg:pb-10">
+      <main className="box-border w-full min-w-0 max-w-full flex-1 overflow-x-clip py-6 pb-10 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:px-6 md:py-10">
         <PageContainer maxWidth="cart" className="max-w-full">
           <Link
             href="/"
@@ -139,7 +139,7 @@ export default function CartPage() {
                   onClick={handleProceed}
                   disabled={!canProceedToCheckout}
                   className={cn(
-                    'hidden h-14 w-full items-center justify-center gap-2 rounded-full lg:flex',
+                    'flex h-14 w-full items-center justify-center gap-2 rounded-full',
                     'font-display text-base font-extrabold uppercase tracking-wider transition-all duration-200',
                     canProceedToCheckout
                       ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
@@ -150,7 +150,7 @@ export default function CartPage() {
                   <ArrowRight className="h-5 w-5" />
                 </button>
 
-                <p className="mt-4 hidden text-center text-xs text-text-faint lg:block">
+                <p className="mt-4 text-center text-xs text-text-faint">
                   Оплата при получении.
                 </p>
               </div>
@@ -171,27 +171,6 @@ export default function CartPage() {
         open={unavailablePlaceOpen}
         onOpenChange={setUnavailablePlaceOpen}
       />
-
-      <div
-        className="fixed inset-x-0 bottom-0 z-30 box-border border-t border-border-on-dark bg-canvas/95 pt-3 backdrop-blur-sm lg:hidden pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]"
-        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-      >
-        <button
-          type="button"
-          onClick={handleProceed}
-          disabled={!canProceedToCheckout}
-          className={cn(
-            'flex h-12 w-full items-center justify-center gap-2 rounded-full',
-            'font-display text-sm font-extrabold uppercase tracking-wider transition-all duration-200',
-            canProceedToCheckout
-              ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 active:scale-[0.98]'
-              : 'cursor-not-allowed bg-card-inner text-text-faint',
-          )}
-        >
-          <span>Выбрать дату и время</span>
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </div>
 
       <Footer compact />
     </div>

@@ -4,6 +4,11 @@ import {
   halfRoundTripBlockMinutes,
   slotConflictsWithDeliveries,
 } from '../src/lib/deliveryBusyWindow'
+import {
+  buildZoneMinutesMap,
+  buildZoneSingleSlotMap,
+  isDeliverySlotAvailable,
+} from '../src/lib/deliverySlotGuard'
 import { resolveDeliveryZone } from '../src/lib/deliveryZoneResolve'
 import { isUnavailableDeliveryPlace } from '../src/lib/unavailableDeliveryPlaces'
 
@@ -56,6 +61,39 @@ assert.equal(
     alexeyki1430,
     false,
     zoneA,
+  ),
+  false,
+)
+
+const zoneMinutesById = buildZoneMinutesMap([
+  { id: zoneA, roundTripMinutes: 20 },
+])
+const zoneSingleSlotById = buildZoneSingleSlotMap([
+  { id: zoneA, code: 'alexeyki', name: 'Алексейки', roundTripMinutes: 20 },
+])
+const chainedPair = [
+  {
+    id: 'booking-a',
+    scheduledAt: new Date('2026-05-26T14:30:00+03:00'),
+    roundTripMinutes: 20,
+    deliveryZoneId: zoneA,
+  },
+  {
+    id: 'booking-b',
+    scheduledAt: new Date('2026-05-26T14:35:00+03:00'),
+    roundTripMinutes: 20,
+    deliveryZoneId: zoneA,
+  },
+]
+assert.equal(
+  isDeliverySlotAvailable(
+    new Date('2026-05-26T14:30:00+03:00'),
+    20,
+    chainedPair,
+    zoneMinutesById,
+    zoneSingleSlotById,
+    zoneA,
+    'booking-a',
   ),
   false,
 )

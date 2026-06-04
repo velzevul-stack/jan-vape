@@ -188,10 +188,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         }
 
+        const deliveryScheduleChanged =
+          !existing ||
+          existing.scheduledAt == null ||
+          new Date(existing.scheduledAt).getTime() !== scheduledAt.getTime() ||
+          existing.deliveryZoneId !== deliveryZoneId
+
         if (
           deliveryZoneId &&
           roundTripMinutes != null &&
-          (status === 'pending' || status === 'confirmed')
+          (status === 'pending' || status === 'confirmed') &&
+          deliveryScheduleChanged
         ) {
           const day = scheduledAt.toISOString().slice(0, 10)
           const { start: dayStart, end: dayEnd } = storeDayBounds(day)
