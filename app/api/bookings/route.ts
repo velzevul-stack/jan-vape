@@ -15,7 +15,11 @@ import { tgSessionCookieName, telegramFromSession, verifyTgSession } from '@/src
 import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/src/lib/unverifiedLimits'
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
-import { buildZoneMinutesMap, isDeliverySlotAvailable } from '@/src/lib/deliverySlotGuard'
+import {
+  buildZoneMinutesMap,
+  buildZoneSingleSlotMap,
+  isDeliverySlotAvailable,
+} from '@/src/lib/deliverySlotGuard'
 import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
 import {
   mapBookingProductLines,
@@ -244,6 +248,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         roundTripMinutes as number,
         existingDeliveries,
         zoneMinutesById,
+        zoneSingleSlotById,
+        zone.id,
       )
       if (!available) {
         errorResponse = NextResponse.json(

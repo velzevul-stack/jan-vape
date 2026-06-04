@@ -1,9 +1,13 @@
-import { slotConflictsWithDeliveries } from './deliveryBusyWindow'
+import {
+  slotConflictsWithDeliveries,
+  type DeliverySlotConflictInput,
+} from './deliveryBusyWindow'
 
 export function assertDeliverySlotAvailable(
   scheduledAt: Date,
   roundTripMinutes: number,
-  existing: Array<{ scheduledAt: Date; roundTripMinutes: number }>,
+  existing: DeliverySlotConflictInput[],
+  requestedSingleSlotOnly = false,
   excludeBookingId?: string,
   bookingIds?: string[],
 ): boolean {
@@ -11,5 +15,10 @@ export function assertDeliverySlotAvailable(
     if (!excludeBookingId || !bookingIds) return true
     return bookingIds[index] !== excludeBookingId
   })
-  return !slotConflictsWithDeliveries(scheduledAt, roundTripMinutes, filtered)
+  return !slotConflictsWithDeliveries(
+    scheduledAt,
+    roundTripMinutes,
+    filtered,
+    requestedSingleSlotOnly,
+  )
 }

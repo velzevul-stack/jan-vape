@@ -1,10 +1,18 @@
 import { assertDeliverySlotAvailable } from './deliveryBookingValidation'
+import { isIvatsevichiDeliveryZone } from './ivatsevichiZone'
 
 export interface DeliverySlotBookingLike {
   id?: string
   scheduledAt: Date | string
   roundTripMinutes?: number | null
   deliveryZoneId?: string | null
+}
+
+export interface DeliveryZoneMeta {
+  id: string
+  code: string
+  name: string
+  roundTripMinutes: number
 }
 
 export function effectiveRoundTripMinutes(
@@ -20,12 +28,29 @@ export function effectiveRoundTripMinutes(
   return fromZone != null && fromZone > 0 ? fromZone : null
 }
 
+export function buildZoneMinutesMap(
+  zones: Array<{ id: string; roundTripMinutes: number }>,
+): Map<string, number> {
+  return new Map(zones.map((zone) => [zone.id, zone.roundTripMinutes]))
+}
+
+export function buildZoneSingleSlotMap(zones: DeliveryZoneMeta[]): Map<string, boolean> {
+  return new Map(
+    zones.map((zone) => [zone.id, isIvatsevichiDeliveryZone(zone)]),
+  )
+}
+
 export function toDeliverySlotEntries(
   bookings: DeliverySlotBookingLike[],
   zoneMinutesById: Map<string, number>,
+  zoneSingleSlotById: Map<string, boolean>,
   excludeBookingId?: string,
-): Array<{ scheduledAt: Date; roundTripMinutes: number }> {
-  const entries: Array<{ scheduledAt: Date; roundTripMinutes: number }> = []
+): Array<{ scheduledAt: Date; roundTripMinutes: number; singleSlotOnly: boolean }> {
+  const entries: Array<{
+    scheduledAt: Date
+    roundTripMinutes: number
+    singleSlotOnly: boolean
+  }> = []
   for (const booking of bookings) {
     if (excludeBookingId && booking.id === excludeBookingId) continue
     if (!booking.deliveryZoneId) continue
@@ -34,15 +59,10 @@ export function toDeliverySlotEntries(
     entries.push({
       scheduledAt: new Date(booking.scheduledAt),
       roundTripMinutes: minutes,
+      singleSlotOnly: zoneSingleSlotById.get(booking.deliveryZoneId) === true,
     })
   }
   return entries
-}
-
-export function buildZoneMinutesMap(
-  zones: Array<{ id: string; roundTripMinutes: number }>,
-): Map<string, number> {
-  return new Map(zones.map((zone) => [zone.id, zone.roundTripMinutes]))
 }
 
 export function isDeliverySlotAvailable(
@@ -50,8 +70,22 @@ export function isDeliverySlotAvailable(
   roundTripMinutes: number,
   bookings: DeliverySlotBookingLike[],
   zoneMinutesById: Map<string, number>,
+  zoneSingleSlotById: Map<string, boolean>,
+  requestZoneId?: string | null,
   excludeBookingId?: string,
 ): boolean {
-  const existing = toDeliverySlotEntries(bookings, zoneMinutesById, excludeBookingId)
-  return assertDeliverySlotAvailable(scheduledAt, roundTripMinutes, existing)
+  const existing = toDeliverySlotEntries(
+    bookings,
+    zoneMinutesById,
+    zoneSingleSlotById,
+    excludeBookingId,
+  )
+  const requestedSingleSlotOnly =
+    requestZoneId != null ? zoneSingleSlotById.get(requestZoneId) === true : false
+  return assertDeliverySlotAvailable(
+    scheduledAt,
+    roundTripMinutes,
+    existing,
+    requestedSingleSlotOnly,
+  )
 }

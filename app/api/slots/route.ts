@@ -8,7 +8,12 @@ import {
   findBlockedSlotsForPickup,
   findGlobalBlockedSlots,
 } from '@/src/lib/blockedSlots'
-import { buildZoneMinutesMap, toDeliverySlotEntries } from '@/src/lib/deliverySlotGuard'
+import {
+  buildZoneMinutesMap,
+  buildZoneSingleSlotMap,
+  toDeliverySlotEntries,
+} from '@/src/lib/deliverySlotGuard'
+import { isIvatsevichiDeliveryZone } from '@/src/lib/ivatsevichiZone'
 
 const QuerySchema = z.object({
   locationId: z.string().uuid().optional(),
@@ -73,7 +78,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const blockedSlots = await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
     const allZones = await zoneRepo.find({ where: { isActive: true } })
     const zoneMinutesById = buildZoneMinutesMap(allZones)
-    const existingDeliveries = toDeliverySlotEntries(deliveryBookings, zoneMinutesById)
+    const zoneSingleSlotById = buildZoneSingleSlotMap(allZones)
+    const existingDeliveries = toDeliverySlotEntries(
+      deliveryBookings,
+      zoneMinutesById,
+      zoneSingleSlotById,
+    )
+    const requestedSingleSlotOnly = isIvatsevichiDeliveryZone(zone)
 
     const slots = generateDeliverySlots(
       date,
@@ -81,6 +92,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       existingDeliveries,
       zone.roundTripMinutes,
       blockedSlots,
+      undefined,
+      requestedSingleSlotOnly,
     )
 
     return NextResponse.json({

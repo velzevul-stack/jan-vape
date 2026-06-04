@@ -9,7 +9,11 @@ import { findDeliveryZoneByName } from '@/src/lib/deliveryZoneResolve'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
 import { notifyBookingItemsChangedIfNeeded } from '@/src/lib/bookingItemsChangedNotify'
 import { notifyBookingRescheduled } from '@/src/lib/rescheduleWebBooking'
-import { buildZoneMinutesMap, isDeliverySlotAvailable } from '@/src/lib/deliverySlotGuard'
+import {
+  buildZoneMinutesMap,
+  buildZoneSingleSlotMap,
+  isDeliverySlotAvailable,
+} from '@/src/lib/deliverySlotGuard'
 import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
 import { storeDayBounds } from '@/lib/dates'
 
@@ -192,6 +196,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           const day = scheduledAt.toISOString().slice(0, 10)
           const { start: dayStart, end: dayEnd } = storeDayBounds(day)
           const zoneMinutesById = buildZoneMinutesMap(zones)
+          const zoneSingleSlotById = buildZoneSingleSlotMap(zones)
           const dayDeliveries = await bookingRepo
             .createQueryBuilder('wb')
             .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
@@ -207,6 +212,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               roundTripMinutes,
               dayDeliveries,
               zoneMinutesById,
+              zoneSingleSlotById,
+              deliveryZoneId,
               existing?.id,
             )
           ) {

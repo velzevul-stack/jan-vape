@@ -34,6 +34,30 @@ assert.equal(
   true,
 )
 
+const ivatsevichiBusy = [{
+  scheduledAt: new Date('2026-05-26T14:30:00+03:00'),
+  roundTripMinutes: 5,
+  singleSlotOnly: true,
+}]
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T14:30:00+03:00'),
+    5,
+    ivatsevichiBusy,
+    true,
+  ),
+  true,
+)
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T14:35:00+03:00'),
+    5,
+    ivatsevichiBusy,
+    true,
+  ),
+  false,
+)
+
 const pankiBusy = [{
   scheduledAt: new Date('2026-05-26T16:15:00+03:00'),
   roundTripMinutes: 15,

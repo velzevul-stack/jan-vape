@@ -11,7 +11,11 @@ import {
   isScheduledAtBlocked,
 } from './blockedSlots'
 import { storeDayBounds } from '@/lib/dates'
-import { buildZoneMinutesMap, isDeliverySlotAvailable } from './deliverySlotGuard'
+import {
+  buildZoneMinutesMap,
+  buildZoneSingleSlotMap,
+  isDeliverySlotAvailable,
+} from './deliverySlotGuard'
 
 export function joinEndpoint(base: string, path: string): string {
   if (!base) return path
@@ -107,6 +111,7 @@ export async function rescheduleWebBooking(
       const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
       const zones = await zoneRepo.find({ where: { isActive: true } })
       const zoneMinutesById = buildZoneMinutesMap(zones)
+      const zoneSingleSlotById = buildZoneSingleSlotMap(zones)
       const roundTripMinutes =
         booking.roundTripMinutes ??
         (booking.deliveryZoneId ? zoneMinutesById.get(booking.deliveryZoneId) : null)
@@ -126,6 +131,8 @@ export async function rescheduleWebBooking(
             roundTripMinutes,
             dayDeliveries,
             zoneMinutesById,
+            zoneSingleSlotById,
+            booking.deliveryZoneId,
             booking.id,
           )
         ) {

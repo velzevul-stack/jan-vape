@@ -5,6 +5,7 @@ import { storeSlotInstant } from '@/lib/dates'
 import {
   isSlotTooSoon,
   slotConflictsWithDeliveries,
+  type DeliverySlotConflictInput,
 } from './deliveryBusyWindow'
 import { isBlockedByInterval } from './blockedSlots'
 
@@ -78,10 +79,11 @@ export function generatePickupSlots(
 export function generateDeliverySlots(
   date: string,
   location: PickupLocation,
-  existingDeliveries: Array<{ scheduledAt: Date; roundTripMinutes: number }>,
+  existingDeliveries: DeliverySlotConflictInput[],
   requestedRoundTripMinutes: number,
   blockedSlots: BlockedSlot[],
   nowOverride?: Date,
+  requestedSingleSlotOnly = false,
 ): SlotInfo[] {
   const now = nowOverride ?? new Date()
 
@@ -102,7 +104,7 @@ export function generateDeliverySlots(
     const slotStart = storeSlotInstant(date, timeStr)
     const slotEnd = new Date(slotStart.getTime() + step * 60 * 1000)
 
-    if (isSlotTooSoon(slotStart, requestedRoundTripMinutes, now)) {
+    if (isSlotTooSoon(slotStart, requestedRoundTripMinutes, now, requestedSingleSlotOnly)) {
       slots.push({ time: timeStr, available: false, bookingsCount: 0, reason: 'past' })
       continue
     }
@@ -113,7 +115,12 @@ export function generateDeliverySlots(
     }
 
     if (
-      slotConflictsWithDeliveries(slotStart, requestedRoundTripMinutes, existingDeliveries)
+      slotConflictsWithDeliveries(
+        slotStart,
+        requestedRoundTripMinutes,
+        existingDeliveries,
+        requestedSingleSlotOnly,
+      )
     ) {
       slots.push({ time: timeStr, available: false, bookingsCount: 0, reason: 'busy' })
       continue
