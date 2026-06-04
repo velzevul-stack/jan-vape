@@ -139,7 +139,7 @@ export default function CartPage() {
                   onClick={handleProceed}
                   disabled={!canProceedToCheckout}
                   className={cn(
-                    'flex h-14 w-full items-center justify-center gap-2 rounded-full',
+                    'hidden h-14 w-full items-center justify-center gap-2 rounded-full lg:flex',
                     'font-display text-base font-extrabold uppercase tracking-wider transition-all duration-200',
                     canProceedToCheckout
                       ? 'bg-accent-primary text-text-on-accent shadow-lg shadow-accent-primary/30 hover:shadow-accent-primary/50 active:scale-[0.98]'
@@ -150,7 +150,7 @@ export default function CartPage() {
                   <ArrowRight className="h-5 w-5" />
                 </button>
 
-                <p className="mt-4 text-center text-xs text-text-faint">
+                <p className="mt-4 hidden text-center text-xs text-text-faint lg:block">
                   Оплата при получении.
                 </p>
               </div>
