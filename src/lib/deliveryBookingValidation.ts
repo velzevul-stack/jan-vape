@@ -8,17 +8,13 @@ export function assertDeliverySlotAvailable(
   roundTripMinutes: number,
   existing: DeliverySlotConflictInput[],
   requestedSingleSlotOnly = false,
-  excludeBookingId?: string,
-  bookingIds?: string[],
+  requestedZoneId?: string,
 ): boolean {
-  const filtered = existing.filter((_, index) => {
-    if (!excludeBookingId || !bookingIds) return true
-    return bookingIds[index] !== excludeBookingId
-  })
   return !slotConflictsWithDeliveries(
     scheduledAt,
     roundTripMinutes,
-    filtered,
+    existing,
     requestedSingleSlotOnly,
+    requestedZoneId,
   )
 }

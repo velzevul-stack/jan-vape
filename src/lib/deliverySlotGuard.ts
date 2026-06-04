@@ -1,4 +1,5 @@
 import { assertDeliverySlotAvailable } from './deliveryBookingValidation'
+import type { DeliverySlotConflictInput } from './deliveryBusyWindow'
 import { isIvatsevichiDeliveryZone } from './ivatsevichiZone'
 
 export interface DeliverySlotBookingLike {
@@ -45,12 +46,8 @@ export function toDeliverySlotEntries(
   zoneMinutesById: Map<string, number>,
   zoneSingleSlotById: Map<string, boolean>,
   excludeBookingId?: string,
-): Array<{ scheduledAt: Date; roundTripMinutes: number; singleSlotOnly: boolean }> {
-  const entries: Array<{
-    scheduledAt: Date
-    roundTripMinutes: number
-    singleSlotOnly: boolean
-  }> = []
+): DeliverySlotConflictInput[] {
+  const entries: DeliverySlotConflictInput[] = []
   for (const booking of bookings) {
     if (excludeBookingId && booking.id === excludeBookingId) continue
     if (!booking.deliveryZoneId) continue
@@ -60,6 +57,7 @@ export function toDeliverySlotEntries(
       scheduledAt: new Date(booking.scheduledAt),
       roundTripMinutes: minutes,
       singleSlotOnly: zoneSingleSlotById.get(booking.deliveryZoneId) === true,
+      deliveryZoneId: booking.deliveryZoneId,
     })
   }
   return entries
@@ -87,5 +85,6 @@ export function isDeliverySlotAvailable(
     roundTripMinutes,
     existing,
     requestedSingleSlotOnly,
+    requestZoneId ?? undefined,
   )
 }

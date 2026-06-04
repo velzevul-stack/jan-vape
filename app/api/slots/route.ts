@@ -94,6 +94,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       blockedSlots,
       undefined,
       requestedSingleSlotOnly,
+      zone.id,
     )
 
     return NextResponse.json({

@@ -84,6 +84,7 @@ export function generateDeliverySlots(
   blockedSlots: BlockedSlot[],
   nowOverride?: Date,
   requestedSingleSlotOnly = false,
+  requestedZoneId?: string,
 ): SlotInfo[] {
   const now = nowOverride ?? new Date()
 
@@ -104,7 +105,16 @@ export function generateDeliverySlots(
     const slotStart = storeSlotInstant(date, timeStr)
     const slotEnd = new Date(slotStart.getTime() + step * 60 * 1000)
 
-    if (isSlotTooSoon(slotStart, requestedRoundTripMinutes, now, requestedSingleSlotOnly)) {
+    if (
+      isSlotTooSoon(
+        slotStart,
+        requestedRoundTripMinutes,
+        now,
+        requestedSingleSlotOnly,
+        requestedZoneId,
+        existingDeliveries,
+      )
+    ) {
       slots.push({ time: timeStr, available: false, bookingsCount: 0, reason: 'past' })
       continue
     }
@@ -120,6 +130,7 @@ export function generateDeliverySlots(
         requestedRoundTripMinutes,
         existingDeliveries,
         requestedSingleSlotOnly,
+        requestedZoneId,
       )
     ) {
       slots.push({ time: timeStr, available: false, bookingsCount: 0, reason: 'busy' })

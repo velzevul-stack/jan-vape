@@ -25,12 +25,48 @@ assert.equal(
   true,
 )
 
+const zoneA = 'zone-alexeyki'
+const zoneB = 'zone-yaglevichi'
+
 const alexeykiBusy = [{
   scheduledAt: new Date('2026-05-26T16:15:00+03:00'),
   roundTripMinutes: 20,
+  deliveryZoneId: zoneA,
 }]
 assert.equal(
-  slotConflictsWithDeliveries(new Date('2026-05-26T16:20:00+03:00'), 20, alexeykiBusy),
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T16:20:00+03:00'),
+    20,
+    alexeykiBusy,
+    false,
+    zoneB,
+  ),
+  true,
+)
+
+const alexeyki1430 = [{
+  scheduledAt: new Date('2026-05-26T14:30:00+03:00'),
+  roundTripMinutes: 20,
+  deliveryZoneId: zoneA,
+}]
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T14:35:00+03:00'),
+    20,
+    alexeyki1430,
+    false,
+    zoneA,
+  ),
+  false,
+)
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T14:25:00+03:00'),
+    20,
+    alexeyki1430,
+    false,
+    zoneB,
+  ),
   true,
 )
 
@@ -61,9 +97,16 @@ assert.equal(
 const pankiBusy = [{
   scheduledAt: new Date('2026-05-26T16:15:00+03:00'),
   roundTripMinutes: 15,
+  deliveryZoneId: 'zone-panki',
 }]
 assert.equal(
-  slotConflictsWithDeliveries(new Date('2026-05-26T16:20:00+03:00'), 15, pankiBusy),
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T16:20:00+03:00'),
+    15,
+    pankiBusy,
+    false,
+    'zone-other',
+  ),
   true,
 )
 
