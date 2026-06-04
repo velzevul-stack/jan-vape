@@ -8,6 +8,7 @@ import {
   findBlockedSlotsForPickup,
   findGlobalBlockedSlots,
 } from '@/src/lib/blockedSlots'
+import { buildZoneMinutesMap, toDeliverySlotEntries } from '@/src/lib/deliverySlotGuard'
 
 const QuerySchema = z.object({
   locationId: z.string().uuid().optional(),
@@ -70,13 +71,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       .getMany()
 
     const blockedSlots = await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
-
-    const existingDeliveries = deliveryBookings
-      .filter((booking) => booking.roundTripMinutes != null)
-      .map((booking) => ({
-        scheduledAt: new Date(booking.scheduledAt),
-        roundTripMinutes: booking.roundTripMinutes as number,
-      }))
+    const allZones = await zoneRepo.find({ where: { isActive: true } })
+    const zoneMinutesById = buildZoneMinutesMap(allZones)
+    const existingDeliveries = toDeliverySlotEntries(deliveryBookings, zoneMinutesById)
 
     const slots = generateDeliverySlots(
       date,

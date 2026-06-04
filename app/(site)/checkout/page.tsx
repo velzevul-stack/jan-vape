@@ -221,6 +221,8 @@ export default function CheckoutPage() {
           const errCode = err.code as string | undefined
           if (errCode === 'delivery_slot_busy') {
             setSubmitError('Это время доставки уже занято. Выберите другое время.')
+          } else if (errCode === 'delivery_place_unavailable') {
+            setSubmitError('Доставка на Санту, Хабзу и Домашний магазин не осуществляется. Выберите другой адрес.')
           } else {
             await mutate(
               (key: string) => typeof key === 'string' && key.startsWith('/api/catalog'),

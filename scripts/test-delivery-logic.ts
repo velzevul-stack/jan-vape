@@ -5,6 +5,7 @@ import {
   slotConflictsWithDeliveries,
 } from '../src/lib/deliveryBusyWindow'
 import { resolveDeliveryZone } from '../src/lib/deliveryZoneResolve'
+import { isUnavailableDeliveryPlace } from '../src/lib/unavailableDeliveryPlaces'
 
 assert.equal(halfRoundTripBlockMinutes(15), 10)
 assert.equal(halfRoundTripBlockMinutes(10), 5)
@@ -23,6 +24,27 @@ assert.equal(
   slotConflictsWithDeliveries(new Date('2026-05-26T17:55:00+03:00'), 40, existing),
   true,
 )
+
+const alexeykiBusy = [{
+  scheduledAt: new Date('2026-05-26T16:15:00+03:00'),
+  roundTripMinutes: 20,
+}]
+assert.equal(
+  slotConflictsWithDeliveries(new Date('2026-05-26T16:20:00+03:00'), 20, alexeykiBusy),
+  true,
+)
+
+const pankiBusy = [{
+  scheduledAt: new Date('2026-05-26T16:15:00+03:00'),
+  roundTripMinutes: 15,
+}]
+assert.equal(
+  slotConflictsWithDeliveries(new Date('2026-05-26T16:20:00+03:00'), 15, pankiBusy),
+  true,
+)
+
+assert.equal(isUnavailableDeliveryPlace('санта, ул. 1'), true)
+assert.equal(isUnavailableDeliveryPlace('Алексейки'), false)
 
 const result = resolveDeliveryZone('заполье, ул. Лесная 3', [{
   id: 'z1',

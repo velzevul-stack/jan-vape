@@ -20,6 +20,8 @@ import {
   getDefaultDeliveryZone,
 } from '@/lib/deliveryAddressText'
 import type { PickupLocation } from '@/lib/mock-data'
+import { UnavailableDeliveryPlaceNotice } from '@/components/checkout/UnavailableDeliveryPlaceNotice'
+import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
 
 type Mode = 'list' | 'delivery'
 
@@ -52,6 +54,7 @@ export function PickupLocationSelector({
     setPickupLocation,
     setAddressDraft,
     setDeliveryZoneHint,
+    isUnavailableDeliveryAddress,
   } = useBooking()
   const { locations, isLoading } = usePickupLocations()
   const { zones } = useDeliveryZones()
@@ -78,6 +81,10 @@ export function PickupLocationSelector({
 
   const applyZoneSelection = useCallback(
     (zone: DeliveryZoneOption, detail: string) => {
+      const nextAddress = composeDeliveryAddress(zone.name, detail)
+      if (isUnavailableDeliveryPlace(nextAddress, zone.name)) {
+        return
+      }
       setDeliveryZoneHint(zoneToSelection(zone))
       setAddressDraft(detail.trim())
       setAmbiguousResolve(null)
@@ -156,6 +163,11 @@ export function PickupLocationSelector({
   const pickZone = useCallback(
     (zone: DeliveryZoneOption) => {
       const detail = extractAddressDetail(addressDraft, zone, zones)
+      const nextAddress = composeDeliveryAddress(zone.name, detail)
+      if (isUnavailableDeliveryPlace(nextAddress, zone.name)) {
+        setResolveError(null)
+        return
+      }
       applyZoneSelection(zone, detail)
       setMode('delivery')
       setTimeout(() => inputRef.current?.focus(), 50)
@@ -165,6 +177,7 @@ export function PickupLocationSelector({
 
   const pickRecentAddress = useCallback(
     (label: string) => {
+      if (isUnavailableDeliveryPlace(label)) return
       setShowRecent(false)
       const ensured = ensureDeliveryAddressWithZone(label, zones)
       if (ensured.zone) {
@@ -339,6 +352,8 @@ export function PickupLocationSelector({
         </>
       ) : (
         <div className="space-y-3">
+          {isUnavailableDeliveryAddress && <UnavailableDeliveryPlaceNotice />}
+
           {deliveryZoneHint && !zonePanelOpen ? (
             <div className="rounded-2xl border border-border-on-dark bg-card-inner px-5 py-5 text-center">
               <p className="text-xs font-medium tracking-[0.18em] text-text-muted">НАСЕЛЁННЫЙ ПУНКТ</p>
@@ -407,6 +422,7 @@ export function PickupLocationSelector({
             </div>
           )}
 
+          {!isUnavailableDeliveryAddress && (
           <div className="min-w-0 rounded-2xl border-2 border-accent-primary/25 bg-gradient-to-b from-accent-primary/5 to-card-inner p-3 shadow-lg shadow-accent-primary/5 sm:p-4">
             <p className="mb-2 text-center text-sm font-bold tracking-wide text-accent-soft">
               АДРЕС ИЛИ МЕСТО ДОСТАВКИ
@@ -462,12 +478,13 @@ export function PickupLocationSelector({
               </button>
             </div>
           </div>
+          )}
 
-          {isResolving && addressDraft.trim().length >= 2 && (
+          {!isUnavailableDeliveryAddress && isResolving && addressDraft.trim().length >= 2 && (
             <p className="text-xs text-text-muted">Определяем зону доставки…</p>
           )}
 
-          {showRecent && recentMatches.length > 0 && (
+          {!isUnavailableDeliveryAddress && showRecent && recentMatches.length > 0 && (
             <ul className="animate-float-up overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-2xl shadow-black/40">
               {recentMatches.map((label) => (
                 <li key={label} className="border-b border-border-on-dark last:border-b-0">
@@ -484,7 +501,7 @@ export function PickupLocationSelector({
             </ul>
           )}
 
-          {ambiguousResolve && ambiguousResolve.candidates.length > 1 && (
+          {!isUnavailableDeliveryAddress && ambiguousResolve && ambiguousResolve.candidates.length > 1 && (
             <div className="rounded-2xl border border-accent-primary/30 bg-accent-primary/5 p-3">
               <p className="mb-2 text-xs text-text-muted">Уточните населённый пункт:</p>
               <div className="flex flex-wrap gap-2">

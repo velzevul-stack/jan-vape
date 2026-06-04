@@ -15,7 +15,8 @@ import { tgSessionCookieName, telegramFromSession, verifyTgSession } from '@/src
 import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/src/lib/unverifiedLimits'
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
 import { normalizeTelegramUsername } from '@/lib/telegram'
-import { assertDeliverySlotAvailable } from '@/src/lib/deliveryBookingValidation'
+import { buildZoneMinutesMap, isDeliverySlotAvailable } from '@/src/lib/deliverySlotGuard'
+import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
 import {
   mapBookingProductLines,
   withDeliveryInComposition,
@@ -192,6 +193,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       deliveryFee = Number(zone.deliveryFee)
       roundTripMinutes = zone.roundTripMinutes
 
+      if (isUnavailableDeliveryPlace(data.customAddressText, zone.name)) {
+        errorResponse = NextResponse.json(
+          { error: 'Delivery to this address is not available', code: 'delivery_place_unavailable' },
+          { status: 409 },
+        )
+        return
+      }
+
       const key = normalizeAddress(data.customAddressText)
       let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
       if (!addr) {
@@ -217,6 +226,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return
       }
 
+      const zones = await zoneRepo.find({ where: { isActive: true } })
+      const zoneMinutesById = buildZoneMinutesMap(zones)
+
       const existingDeliveries = await bookingRepo
         .createQueryBuilder('wb')
         .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
@@ -227,15 +239,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         .andWhere('wb.deliveryZoneId IS NOT NULL')
         .getMany()
 
-      const available = assertDeliverySlotAvailable(
+      const available = isDeliverySlotAvailable(
         scheduledAt,
         roundTripMinutes as number,
-        existingDeliveries
-          .filter((booking) => booking.roundTripMinutes != null)
-          .map((booking) => ({
-            scheduledAt: new Date(booking.scheduledAt),
-            roundTripMinutes: booking.roundTripMinutes as number,
-          })),
+        existingDeliveries,
+        zoneMinutesById,
       )
       if (!available) {
         errorResponse = NextResponse.json(

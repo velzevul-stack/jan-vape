@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { composeDeliveryAddress } from '@/lib/deliveryAddressText'
+import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
 
 interface DeliveryZoneSelection {
   id: string
@@ -41,6 +42,7 @@ interface BookingContextType extends BookingState {
   isDeliveryDraft: boolean
   isLocationSelected: boolean
   canProceedToCheckout: boolean
+  isUnavailableDeliveryAddress: boolean
   isSlotSelected: boolean
   deliveryFee: number
   zoneForSlots: DeliveryZoneSelection | null
@@ -235,7 +237,15 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const isDeliverySelected =
     state.customAddressText !== null && state.deliveryZone !== null
   const isLocationSelected = isPickupSelected || isDeliveryDraft || isDeliverySelected
-  const canProceedToCheckout = isLocationSelected
+  const isUnavailableDeliveryAddress = isUnavailableDeliveryPlace(
+    state.addressDraft,
+    state.deliveryZoneHint?.name,
+    state.deliveryZone?.name,
+    state.customAddressText,
+  )
+  const canProceedToCheckout =
+    isLocationSelected &&
+    !((isDeliveryDraft || isDeliverySelected) && isUnavailableDeliveryAddress)
   const isSlotSelected = state.pickupDate !== null && state.pickupTime !== null
   const deliveryFee = state.deliveryZone?.deliveryFee ?? state.deliveryZoneHint?.deliveryFee ?? 0
   const zoneForSlots = state.deliveryZone ?? state.deliveryZoneHint
@@ -266,6 +276,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         isDeliveryDraft,
         isLocationSelected,
         canProceedToCheckout,
+        isUnavailableDeliveryAddress,
         isSlotSelected,
         deliveryFee,
         zoneForSlots,

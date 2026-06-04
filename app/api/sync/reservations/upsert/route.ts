@@ -9,6 +9,9 @@ import { findDeliveryZoneByName } from '@/src/lib/deliveryZoneResolve'
 import type { WebBookingStatus } from '@/src/entities/WebBooking'
 import { notifyBookingItemsChangedIfNeeded } from '@/src/lib/bookingItemsChangedNotify'
 import { notifyBookingRescheduled } from '@/src/lib/rescheduleWebBooking'
+import { buildZoneMinutesMap, isDeliverySlotAvailable } from '@/src/lib/deliverySlotGuard'
+import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
+import { storeDayBounds } from '@/lib/dates'
 
 const ReservationItemSchema = z.object({
   externalId: z.number().int().positive(),
@@ -140,6 +143,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           roundTripMinutes = zone.roundTripMinutes
           const detail = addressDetail?.trim() ?? ''
           const addressText = detail ? `${zone.name}, ${detail}` : zone.name
+          if (isUnavailableDeliveryPlace(addressText, zone.name, reservation.place)) {
+            throw new Error('delivery_place_unavailable')
+          }
           const key = normalizeAddress(addressText)
           let addr = await addressRepo.findOne({ where: { normalizedKey: key } })
           if (!addr) {
@@ -162,19 +168,49 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           }
         } else if (reservation.place) {
           const placeName = reservation.place.trim()
-          const locations = await locationRepo.find({ where: { isActive: true } })
-          const loc = locations.find((l) => l.name.toLowerCase() === placeName.toLowerCase())
-          if (loc) {
-            locationId = loc.id
-            customAddressId = null
-            deliveryZoneId = null
-            deliveryFee = 0
-            roundTripMinutes = null
+          const zone = findDeliveryZoneByName(zones, placeName)
+          if (zone) {
+            await applyDeliveryZone(zone, null)
           } else {
-            const zone = findDeliveryZoneByName(zones, placeName)
-            if (zone) {
-              await applyDeliveryZone(zone, null)
+            const locations = await locationRepo.find({ where: { isActive: true } })
+            const loc = locations.find((l) => l.name.toLowerCase() === placeName.toLowerCase())
+            if (loc) {
+              locationId = loc.id
+              customAddressId = null
+              deliveryZoneId = null
+              deliveryFee = 0
+              roundTripMinutes = null
             }
+          }
+        }
+
+        if (
+          deliveryZoneId &&
+          roundTripMinutes != null &&
+          (status === 'pending' || status === 'confirmed')
+        ) {
+          const day = scheduledAt.toISOString().slice(0, 10)
+          const { start: dayStart, end: dayEnd } = storeDayBounds(day)
+          const zoneMinutesById = buildZoneMinutesMap(zones)
+          const dayDeliveries = await bookingRepo
+            .createQueryBuilder('wb')
+            .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+            .andWhere('wb.scheduledAt BETWEEN :start AND :end', {
+              start: dayStart.toISOString(),
+              end: dayEnd.toISOString(),
+            })
+            .andWhere('wb.deliveryZoneId IS NOT NULL')
+            .getMany()
+          if (
+            !isDeliverySlotAvailable(
+              scheduledAt,
+              roundTripMinutes,
+              dayDeliveries,
+              zoneMinutesById,
+              existing?.id,
+            )
+          ) {
+            throw new Error('delivery_slot_busy')
           }
         }
 

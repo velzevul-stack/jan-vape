@@ -11,6 +11,7 @@ import {
   isScheduledAtBlocked,
 } from './blockedSlots'
 import { storeDayBounds } from '@/lib/dates'
+import { buildZoneMinutesMap, isDeliverySlotAvailable } from './deliverySlotGuard'
 
 export function joinEndpoint(base: string, path: string): string {
   if (!base) return path
@@ -101,6 +102,35 @@ export async function rescheduleWebBooking(
       const blockedSlots = await findGlobalBlockedSlots(blockedRepo, dayStart, dayEnd)
       if (isScheduledAtBlocked(input.scheduledAt, blockedSlots)) {
         throw new Error('Time slot is blocked')
+      }
+
+      const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
+      const zones = await zoneRepo.find({ where: { isActive: true } })
+      const zoneMinutesById = buildZoneMinutesMap(zones)
+      const roundTripMinutes =
+        booking.roundTripMinutes ??
+        (booking.deliveryZoneId ? zoneMinutesById.get(booking.deliveryZoneId) : null)
+      if (roundTripMinutes != null) {
+        const dayDeliveries = await bookingRepo
+          .createQueryBuilder('wb')
+          .where('wb.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+          .andWhere('wb.scheduledAt BETWEEN :start AND :end', {
+            start: dayStart.toISOString(),
+            end: dayEnd.toISOString(),
+          })
+          .andWhere('wb.deliveryZoneId IS NOT NULL')
+          .getMany()
+        if (
+          !isDeliverySlotAvailable(
+            input.scheduledAt,
+            roundTripMinutes,
+            dayDeliveries,
+            zoneMinutesById,
+            booking.id,
+          )
+        ) {
+          throw new Error('Delivery time is not available')
+        }
       }
     }
 
