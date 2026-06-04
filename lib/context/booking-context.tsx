@@ -243,9 +243,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     state.deliveryZone?.name,
     state.customAddressText,
   )
-  const canProceedToCheckout =
-    isLocationSelected &&
-    !((isDeliveryDraft || isDeliverySelected) && isUnavailableDeliveryAddress)
+  const canProceedToCheckout = isLocationSelected
   const isSlotSelected = state.pickupDate !== null && state.pickupTime !== null
   const deliveryFee = state.deliveryZone?.deliveryFee ?? state.deliveryZoneHint?.deliveryFee ?? 0
   const zoneForSlots = state.deliveryZone ?? state.deliveryZoneHint

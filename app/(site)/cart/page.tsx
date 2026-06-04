@@ -14,14 +14,22 @@ import { Footer } from '@/components/layout/Footer'
 import { CartItem, EmptyCart } from '@/components/cart/CartItem'
 import { PickupLocationSelector } from '@/components/checkout/PickupLocationSelector'
 import { DeliveryConfirmDialog } from '@/components/checkout/DeliveryConfirmDialog'
+import { UnavailableDeliveryPlaceDialog } from '@/components/checkout/UnavailableDeliveryPlaceDialog'
 import { PageContainer } from '@/components/layout/PageContainer'
 
 export default function CartPage() {
   const router = useRouter()
   const { items, totalItems, totalPrice, clearCart, syncWithCatalog, cartLimitMessage } = useCart()
-  const { canProceedToCheckout, isPickupSelected, isDeliverySelected, isDeliveryDraft } = useBooking()
+  const {
+    canProceedToCheckout,
+    isPickupSelected,
+    isDeliverySelected,
+    isDeliveryDraft,
+    isUnavailableDeliveryAddress,
+  } = useBooking()
   const { products } = useCatalog({}, { refreshInterval: 5_000 })
   const [deliveryConfirmOpen, setDeliveryConfirmOpen] = useState(false)
+  const [unavailablePlaceOpen, setUnavailablePlaceOpen] = useState(false)
   const [selectorCollapse, setSelectorCollapse] = useState(0)
 
   useEffect(() => {
@@ -34,10 +42,18 @@ export default function CartPage() {
     if (!canProceedToCheckout) return
     setSelectorCollapse((value) => value + 1)
     if (isPickupSelected || isDeliverySelected) {
+      if (isUnavailableDeliveryAddress) {
+        setUnavailablePlaceOpen(true)
+        return
+      }
       router.push('/checkout')
       return
     }
     if (isDeliveryDraft) {
+      if (isUnavailableDeliveryAddress) {
+        setUnavailablePlaceOpen(true)
+        return
+      }
       setDeliveryConfirmOpen(true)
     }
   }
@@ -143,7 +159,15 @@ export default function CartPage() {
         </PageContainer>
       </main>
 
-      <DeliveryConfirmDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen} />
+      <DeliveryConfirmDialog
+        open={deliveryConfirmOpen}
+        onOpenChange={setDeliveryConfirmOpen}
+        onUnavailableAddress={() => setUnavailablePlaceOpen(true)}
+      />
+      <UnavailableDeliveryPlaceDialog
+        open={unavailablePlaceOpen}
+        onOpenChange={setUnavailablePlaceOpen}
+      />
 
       <div
         className="fixed inset-x-0 bottom-0 z-30 box-border border-t border-border-on-dark bg-canvas/95 pt-3 backdrop-blur-sm lg:hidden pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]"

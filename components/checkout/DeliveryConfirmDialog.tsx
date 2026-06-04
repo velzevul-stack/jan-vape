@@ -14,14 +14,18 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { UnavailableDeliveryPlaceNotice } from '@/components/checkout/UnavailableDeliveryPlaceNotice'
 
 interface DeliveryConfirmDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onUnavailableAddress: () => void
 }
 
-export function DeliveryConfirmDialog({ open, onOpenChange }: DeliveryConfirmDialogProps) {
+export function DeliveryConfirmDialog({
+  open,
+  onOpenChange,
+  onUnavailableAddress,
+}: DeliveryConfirmDialogProps) {
   const router = useRouter()
   const { totalPrice } = useCart()
   const {
@@ -48,7 +52,12 @@ export function DeliveryConfirmDialog({ open, onOpenChange }: DeliveryConfirmDia
 
   const handleConfirm = async () => {
     const address = displayAddress.trim()
-    if (!address || !previewZone || isUnavailableDeliveryAddress) return
+    if (!address || !previewZone) return
+    if (isUnavailableDeliveryAddress) {
+      onOpenChange(false)
+      onUnavailableAddress()
+      return
+    }
     setIsConfirming(true)
     setError(null)
     try {
@@ -69,47 +78,32 @@ export function DeliveryConfirmDialog({ open, onOpenChange }: DeliveryConfirmDia
         className="gap-0 overflow-hidden rounded-3xl border-0 bg-elevated p-0 shadow-2xl shadow-black/60 sm:max-w-sm"
       >
         <div className="px-6 pt-6 pb-4">
-          {isUnavailableDeliveryAddress ? (
-            <>
-              <DialogTitle className="text-lg font-semibold text-text-on-dark">
-                Доставка недоступна
-              </DialogTitle>
-              <div className="mt-4">
-                <UnavailableDeliveryPlaceNotice />
-              </div>
-            </>
-          ) : (
-            <>
-              <DialogTitle className="text-lg font-semibold text-text-on-dark">
-                Доставить на этот адрес?
-              </DialogTitle>
-              <DialogDescription asChild>
-                <div className="mt-4 space-y-3">
-                  <p className="flex items-start gap-2.5 text-sm leading-snug text-text-on-dark">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent-primary" />
-                    <span>{displayAddress}</span>
-                  </p>
-                  {previewZone && (
-                    <p className="text-sm text-text-muted">
-                      {previewZone.name}
-                      {' · '}
-                      {fee > 0 ? formatPrice(fee) : 'бесплатно'}
-                    </p>
-                  )}
-                </div>
-              </DialogDescription>
-            </>
-          )}
+          <DialogTitle className="text-lg font-semibold text-text-on-dark">
+            Доставить на этот адрес?
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="mt-4 space-y-3">
+              <p className="flex items-start gap-2.5 text-sm leading-snug text-text-on-dark">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent-primary" />
+                <span>{displayAddress}</span>
+              </p>
+              {previewZone && (
+                <p className="text-sm text-text-muted">
+                  {previewZone.name}
+                  {' · '}
+                  {fee > 0 ? formatPrice(fee) : 'бесплатно'}
+                </p>
+              )}
+            </div>
+          </DialogDescription>
         </div>
 
-        {!isUnavailableDeliveryAddress && (
         <div className="mx-6 mb-5 flex items-center justify-between rounded-2xl bg-card-inner px-4 py-3">
           <span className="text-sm text-text-muted">Итого с доставкой</span>
           <span className="text-lg font-semibold tabular-nums text-accent-soft">
             {formatPrice(orderTotal)}
           </span>
         </div>
-        )}
 
         {error && (
           <p className="mx-6 mb-4 rounded-xl bg-status-danger/10 px-3 py-2 text-sm text-status-danger">
@@ -128,11 +122,11 @@ export function DeliveryConfirmDialog({ open, onOpenChange }: DeliveryConfirmDia
           </button>
           <button
             type="button"
-            disabled={isConfirming || isUnavailableDeliveryAddress}
+            disabled={isConfirming}
             onClick={() => void handleConfirm()}
             className={cn(
               'h-11 flex-1 rounded-full bg-accent-primary text-sm font-medium text-text-on-accent transition-opacity',
-              (isConfirming || isUnavailableDeliveryAddress) && 'opacity-70',
+              isConfirming && 'opacity-70',
             )}
           >
             {isConfirming ? 'Секунду…' : 'Да'}
