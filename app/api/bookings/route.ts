@@ -232,6 +232,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const zones = await zoneRepo.find({ where: { isActive: true } })
       const zoneMinutesById = buildZoneMinutesMap(zones)
+      const zoneSingleSlotById = buildZoneSingleSlotMap(zones)
 
       const existingDeliveries = await bookingRepo
         .createQueryBuilder('wb')

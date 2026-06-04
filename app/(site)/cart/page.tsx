@@ -162,7 +162,10 @@ export default function CartPage() {
       <DeliveryConfirmDialog
         open={deliveryConfirmOpen}
         onOpenChange={setDeliveryConfirmOpen}
-        onUnavailableAddress={() => setUnavailablePlaceOpen(true)}
+        onUnavailableAddress={() => {
+          setDeliveryConfirmOpen(false)
+          window.setTimeout(() => setUnavailablePlaceOpen(true), 0)
+        }}
       />
       <UnavailableDeliveryPlaceDialog
         open={unavailablePlaceOpen}

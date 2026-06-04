@@ -467,7 +467,7 @@ export function PickupLocationSelector({
             <p className="text-xs text-text-muted">Определяем зону доставки…</p>
           )}
 
-          {!isUnavailableDeliveryAddress && showRecent && recentMatches.length > 0 && (
+          {showRecent && recentMatches.length > 0 && (
             <ul className="animate-float-up overflow-hidden rounded-2xl border border-border-strong bg-elevated shadow-2xl shadow-black/40">
               {recentMatches.map((label) => (
                 <li key={label} className="border-b border-border-on-dark last:border-b-0">
