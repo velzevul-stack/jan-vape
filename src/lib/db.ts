@@ -56,18 +56,39 @@ declare global {
   var __dataSource: DataSource | undefined
 }
 
+function resolveDatabaseSsl(databaseUrl: string): false | { rejectUnauthorized: boolean } {
+  const override = process.env.DATABASE_SSL?.trim().toLowerCase()
+  if (override === 'false' || override === '0' || override === 'no') {
+    return false
+  }
+  if (override === 'true' || override === '1' || override === 'yes') {
+    return { rejectUnauthorized: false }
+  }
+
+  const localHost =
+    databaseUrl.includes('localhost') ||
+    databaseUrl.includes('127.0.0.1') ||
+    databaseUrl.includes('@postgres:')
+
+  if (localHost) {
+    return false
+  }
+
+  const needsSsl =
+    databaseUrl.includes('neon.tech') ||
+    databaseUrl.includes('sslmode=require') ||
+    databaseUrl.includes('sslmode=verify-full')
+
+  return needsSsl ? { rejectUnauthorized: false } : false
+}
+
 function createDataSource(): DataSource {
   const url = process.env.DATABASE_URL ?? ''
-  const needsSsl =
-    process.env.NODE_ENV === 'production' ||
-    url.includes('neon.tech') ||
-    url.includes('sslmode=require') ||
-    url.includes('sslmode=verify-full')
 
   return new DataSource({
     type: 'postgres',
     url,
-    ssl: needsSsl ? { rejectUnauthorized: false } : false,
+    ssl: resolveDatabaseSsl(url),
     entities,
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : false,
