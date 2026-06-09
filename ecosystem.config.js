@@ -1,10 +1,23 @@
+const path = require('path')
+
+const root = __dirname
+
 module.exports = {
   apps: [
     {
+      name: 'jan-vape-db',
+      script: path.join(root, 'scripts/pm2-docker-db.sh'),
+      interpreter: 'bash',
+      cwd: root,
+      instances: 1,
+      autorestart: true,
+      watch: false,
+    },
+    {
       name: 'jan-vape',
-      script: 'node_modules/.bin/next',
-      args: 'start',
-      cwd: '/var/www/jan-vape-suite',
+      script: path.join(root, 'scripts/pm2-start.sh'),
+      interpreter: 'bash',
+      cwd: root,
       instances: 1,
       autorestart: true,
       watch: false,

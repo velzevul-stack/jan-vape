@@ -5,15 +5,22 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"
+    env_file:
+      - path: .env.docker
+        required: true
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-jan}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-jan_vape}
     volumes:
       - jan_vape_pg:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jan} -d ${POSTGRES_DB:-jan_vape}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-jan} -d ${POSTGRES_DB:-jan_vape}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
