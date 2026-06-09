@@ -27,11 +27,7 @@ echo "==> 4. Build Next.js"
 NODE_ENV=production npm run build
 
 echo "==> 5. Start / reload PM2 (db + app)"
-if pm2 list | grep -q 'jan-vape'; then
-  pm2 reload ecosystem.config.js --update-env
-else
-  pm2 start ecosystem.config.js
-fi
+bash scripts/pm2-reset.sh
 
 pm2 save
 
