@@ -193,6 +193,10 @@ assert.equal(
 )
 
 assert.equal(isUnavailableDeliveryPlace('санта, ул. 1'), true)
+assert.equal(isUnavailableDeliveryPlace('домашний'), true)
+assert.equal(isUnavailableDeliveryPlace('на хабзу'), true)
+assert.equal(isUnavailableDeliveryPlace('Механизаторов 7'), true)
+assert.equal(isUnavailableDeliveryPlace('Депутатская 47'), true)
 assert.equal(isUnavailableDeliveryPlace('Алексейки'), false)
 
 const result = resolveDeliveryZone('заполье, ул. Лесная 3', [{

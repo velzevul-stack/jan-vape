@@ -1,11 +1,21 @@
 const UNAVAILABLE_PLACE_PATTERN =
-  /сант[аеуы]?|домашн(?:ий|ем|его|ему|им|ими)?\s*магаз|дом[\.\s]*магаз|хабз[аеуы]?|\bsanta\b|\bhabza\b/i
+  /сант[аеуы]?|домашн|дом[\.\s]*магаз|хабз[аеуы]?|механизатор(?:ов)?\s*7|депутатск(?:ая|ой)\s*47|\bsanta\b|\bhabza\b/i
+
+const UNAVAILABLE_ADDRESS_MARKERS = [
+  'механизаторов 7',
+  'депутатская 47',
+]
 
 export const UNAVAILABLE_DELIVERY_PLACE_MESSAGE =
   'Доставка на Санту, Хабзу и Домашний магазин не осуществляется. Выберите другой адрес.'
 
 export function normalizeDeliveryPlaceText(text: string): string {
-  return text.toLowerCase().trim().replace(/\s+/g, ' ')
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/ё/g, 'е')
+    .replace(/[^\p{L}\p{N}\s.-]/gu, ' ')
+    .replace(/\s+/g, ' ')
 }
 
 export function isUnavailableDeliveryPlace(...parts: Array<string | null | undefined>): boolean {
@@ -14,5 +24,7 @@ export function isUnavailableDeliveryPlace(...parts: Array<string | null | undef
     .filter(Boolean)
     .join(' ')
   if (!combined) return false
-  return UNAVAILABLE_PLACE_PATTERN.test(normalizeDeliveryPlaceText(combined))
+  const normalized = normalizeDeliveryPlaceText(combined)
+  if (UNAVAILABLE_PLACE_PATTERN.test(normalized)) return true
+  return UNAVAILABLE_ADDRESS_MARKERS.some((marker) => normalized.includes(marker))
 }
