@@ -112,19 +112,17 @@ export function slotConflictsWithDeliveries(
     }
 
     const existingSingle = booking.singleSlotOnly === true
-    if (requestedSingleSlotOnly || existingSingle) {
-      if (requestedSingleSlotOnly && existingSingle) {
-        return bookingInSlotInterval(slotStart, booking.scheduledAt)
-      }
-      const slotInterval = slotIntervalForStart(slotStart)
-      const existingWindow = existingSingle
-        ? slotIntervalForStart(booking.scheduledAt)
-        : bookingBusyWindow(booking, allBookings)
-      return busyWindowsOverlap(slotInterval, existingWindow)
+
+    if (requestedSingleSlotOnly && existingSingle) {
+      return bookingInSlotInterval(slotStart, booking.scheduledAt)
     }
 
-    const candidateWindow = bookingBusyWindow(candidate, allBookings)
-    const existingWindow = bookingBusyWindow(booking, allBookings)
+    const candidateWindow = requestedSingleSlotOnly
+      ? slotIntervalForStart(slotStart)
+      : bookingBusyWindow(candidate, allBookings)
+    const existingWindow = existingSingle
+      ? slotIntervalForStart(booking.scheduledAt)
+      : bookingBusyWindow(booking, allBookings)
     return busyWindowsOverlap(candidateWindow, existingWindow)
   })
 }

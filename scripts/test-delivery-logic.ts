@@ -148,6 +148,50 @@ assert.equal(
   true,
 )
 
+const ivatsevichiZone = 'zone-ivatsevichi'
+const villageDuringTrip = [{
+  scheduledAt: new Date('2026-05-26T16:30:00+03:00'),
+  roundTripMinutes: 20,
+  deliveryZoneId: 'zone-yaglevichi',
+}]
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T16:25:00+03:00'),
+    5,
+    villageDuringTrip,
+    true,
+    ivatsevichiZone,
+  ),
+  true,
+)
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T16:35:00+03:00'),
+    5,
+    villageDuringTrip,
+    true,
+    ivatsevichiZone,
+  ),
+  true,
+)
+
+const ivatsevichiAt1625 = [{
+  scheduledAt: new Date('2026-05-26T16:25:00+03:00'),
+  roundTripMinutes: 5,
+  singleSlotOnly: true,
+  deliveryZoneId: ivatsevichiZone,
+}]
+assert.equal(
+  slotConflictsWithDeliveries(
+    new Date('2026-05-26T16:30:00+03:00'),
+    20,
+    ivatsevichiAt1625,
+    false,
+    'zone-yaglevichi',
+  ),
+  true,
+)
+
 assert.equal(isUnavailableDeliveryPlace('санта, ул. 1'), true)
 assert.equal(isUnavailableDeliveryPlace('Алексейки'), false)
 
