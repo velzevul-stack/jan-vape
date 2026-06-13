@@ -10,6 +10,7 @@ import {
   isDeliverySlotAvailable,
 } from '../src/lib/deliverySlotGuard'
 import { resolveDeliveryZone } from '../src/lib/deliveryZoneResolve'
+import { composeDeliveryAddress } from '../lib/deliveryAddressText'
 import { isUnavailableDeliveryPlace } from '../src/lib/unavailableDeliveryPlaces'
 
 assert.equal(halfRoundTripBlockMinutes(15), 10)
@@ -262,5 +263,12 @@ assert.ok(defaultResult)
 assert.equal(defaultResult?.zoneName, 'Ивацевичи')
 assert.equal(defaultResult?.displayAddress, 'Ивацевичи, ул. Ленина 5')
 assert.equal(defaultResult?.zoneId, 'z0')
+
+assert.equal(composeDeliveryAddress('Михновичи', 'Ленина 5'), 'Михновичи, Ленина 5')
+assert.equal(composeDeliveryAddress('Михновичи', 'Михновичи, Ленина 5'), 'Михновичи, Ленина 5')
+assert.equal(composeDeliveryAddress('Михновичи', 'Михновичи'), 'Михновичи')
+assert.equal(composeDeliveryAddress('Михновичи', 'михнович, Ленина 5'), 'Михновичи, Ленина 5')
+assert.equal(composeDeliveryAddress('Михновичи', 'михнович'), 'Михновичи')
+assert.equal(composeDeliveryAddress('Михновичи', 'Михновичи Ленина 5'), 'Михновичи, Ленина 5')
 
 console.log('delivery tests passed')

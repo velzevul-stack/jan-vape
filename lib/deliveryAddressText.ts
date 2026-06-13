@@ -234,12 +234,102 @@ export function detectZoneInAddress(
   return null
 }
 
+function stripZonePrefixFromDetail(zoneName: string, detail: string): string {
+  const trimmed = detail.trim()
+  if (!trimmed) return ''
+
+  const normZone = normalize(zoneName)
+  const normDetail = normalize(trimmed)
+  if (normDetail === normZone) return ''
+
+  const commaIndex = trimmed.indexOf(',')
+  if (commaIndex >= 0) {
+    const prefix = trimmed.slice(0, commaIndex).trim()
+    const suffix = trimmed.slice(commaIndex + 1).trim()
+    const normPrefix = normalize(prefix)
+    if (
+      normPrefix === normZone
+      || levenshtein(normPrefix, normZone) <= fuzzyThreshold(normZone)
+    ) {
+      return cleanupAddressDetail(suffix)
+    }
+  }
+
+  if (normDetail.startsWith(normZone + ' ')) {
+    const rawPrefixLen = trimmed.toLowerCase().startsWith(zoneName.toLowerCase())
+      ? zoneName.length
+      : trimmed.indexOf(' ')
+    return cleanupAddressDetail(trimmed.slice(rawPrefixLen).trim())
+  }
+
+  const spaceIndex = trimmed.indexOf(' ')
+  if (spaceIndex > 0) {
+    const prefix = trimmed.slice(0, spaceIndex).trim()
+    const normPrefix = normalize(prefix)
+    if (
+      normPrefix === normZone
+      || levenshtein(normPrefix, normZone) <= fuzzyThreshold(normZone)
+    ) {
+      return cleanupAddressDetail(trimmed.slice(spaceIndex + 1).trim())
+    }
+  }
+
+  if (
+    commaIndex < 0
+    && spaceIndex < 0
+    && levenshtein(normDetail, normZone) <= fuzzyThreshold(normZone)
+  ) {
+    return ''
+  }
+
+  return cleanupAddressDetail(trimmed)
+}
+
+function detailAlreadyIncludesZone(zoneName: string, detail: string): boolean {
+  const trimmed = detail.trim()
+  if (!trimmed || !zoneName.trim()) return false
+
+  const normZone = normalize(zoneName)
+  const normDetail = normalize(trimmed)
+  if (normDetail === normZone) return true
+
+  const commaIndex = trimmed.indexOf(',')
+  const prefix = (commaIndex >= 0 ? trimmed.slice(0, commaIndex) : trimmed).trim()
+  const normPrefix = normalize(prefix)
+  if (normPrefix === normZone) return true
+  if (normPrefix && levenshtein(normPrefix, normZone) <= fuzzyThreshold(normZone)) return true
+
+  if (normDetail.startsWith(normZone + ',') || normDetail.startsWith(normZone + ' ')) return true
+  if (normDetail.endsWith(' ' + normZone) || normDetail.endsWith(', ' + normZone)) return true
+
+  return false
+}
+
 export function composeDeliveryAddress(zoneName: string, detail: string): string {
   const zone = zoneName.trim()
-  const street = cleanupAddressDetail(detail)
-  if (!zone) return street
+  const raw = detail.trim()
+  if (!zone) return cleanupAddressDetail(detail)
+  if (!raw) return zone
+
+  if (detailAlreadyIncludesZone(zone, raw)) {
+    const detailOnly = stripZonePrefixFromDetail(zone, raw)
+    if (!detailOnly) return zone
+    return `${zone}, ${cleanupAddressDetail(detailOnly)}`
+  }
+
+  const street = cleanupAddressDetail(raw)
   if (!street) return zone
-  return `${zone}, ${street}`
+
+  const zoneOnly: DeliveryZoneOption = {
+    id: '',
+    code: '',
+    name: zone,
+    roundTripMinutes: 0,
+    deliveryFee: 0,
+  }
+  const stripped = stripKnownZones(street, [zoneOnly])
+  if (!stripped) return zone
+  return `${zone}, ${stripped}`
 }
 
 export function extractAddressDetail(
@@ -261,6 +351,10 @@ export function extractAddressDetail(
 
   const stripped = stripKnownZones(trimmed, zones)
   if (stripped) return stripped
+
+  const zoneDetail = stripZonePrefixFromDetail(resolvedZone.name, trimmed)
+  if (zoneDetail !== cleanupAddressDetail(trimmed)) return zoneDetail
+
   return stripDefaultZoneFromPlaceLabel(trimmed, resolvedZone.name)
 }
 
