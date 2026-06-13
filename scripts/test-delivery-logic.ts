@@ -211,6 +211,35 @@ assert.ok(result)
 assert.equal(result?.zoneName, 'Заполье')
 assert.equal(result?.confidence, 'exact')
 
+const zonesForDetect = [
+  { id: 'z0', code: 'ivatevichi', name: 'Ивацевичи', aliases: ['ивцевичи'], roundTripMinutes: 5, deliveryFee: 0 },
+  { id: 'z1', code: 'mihnovichi', name: 'Михновичи', aliases: ['михновичи'], roundTripMinutes: 10, deliveryFee: 0 },
+  { id: 'z2', code: 'panki', name: 'Панки', aliases: ['панки'], roundTripMinutes: 15, deliveryFee: 0 },
+  { id: 'z3', code: 'yaglevichi', name: 'Яглевичи', aliases: ['яглевичи'], roundTripMinutes: 20, deliveryFee: 5 },
+]
+
+const detectExact = resolveDeliveryZone('Михновичи, Ленина 5', zonesForDetect)
+assert.ok(detectExact)
+assert.equal(detectExact?.zoneName, 'Михновичи')
+assert.equal(detectExact?.confidence, 'exact')
+
+const detectFuzzyPrefix = resolveDeliveryZone('михнович, Ленина 5', zonesForDetect)
+assert.ok(detectFuzzyPrefix)
+assert.equal(detectFuzzyPrefix?.zoneName, 'Михновичи')
+
+const detectVillageOnly = resolveDeliveryZone('яглевич', zonesForDetect)
+assert.ok(detectVillageOnly)
+assert.equal(detectVillageOnly?.zoneName, 'Яглевичи')
+
+const detectAtEnd = resolveDeliveryZone('ул. Лесная 3, Панки', zonesForDetect)
+assert.ok(detectAtEnd)
+assert.equal(detectAtEnd?.zoneName, 'Панки')
+
+const detectPureStreet = resolveDeliveryZone('ул. Ленина 5', zonesForDetect)
+assert.ok(detectPureStreet)
+assert.equal(detectPureStreet?.zoneName, 'Ивацевичи')
+assert.equal(detectPureStreet?.confidence, 'none')
+
 const defaultResult = resolveDeliveryZone('ул. Ленина 5', [
   {
     id: 'z0',

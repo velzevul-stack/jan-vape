@@ -15,6 +15,7 @@ import {
 import { filterRecentAddresses } from '@/lib/recentAddresses'
 import {
   composeDeliveryAddress,
+  detectZoneInAddress,
   ensureDeliveryAddressWithZone,
   extractAddressDetail,
   getDefaultDeliveryZone,
@@ -142,15 +143,23 @@ export function PickupLocationSelector({
       setResolveError(null)
       if (suggestRef.current) clearTimeout(suggestRef.current)
       suggestRef.current = setTimeout(() => {
+        const trimmed = value.trim()
+        if (trimmed.length >= 2) {
+          const detected = detectZoneInAddress(trimmed, zones)
+          if (detected && detected.id !== deliveryZoneHint?.id) {
+            applyZoneSelection(detected, extractAddressDetail(trimmed, detected, zones))
+            return
+          }
+        }
         const query = deliveryZoneHint
           ? composeDeliveryAddress(deliveryZoneHint.name, value)
           : value
         const matches = filterRecentAddresses(query)
         setRecentMatches(matches)
         setShowRecent(matches.length > 0)
-      }, 150)
+      }, 400)
     },
-    [deliveryZoneHint, setAddressDraft],
+    [applyZoneSelection, deliveryZoneHint, setAddressDraft, zones],
   )
 
   const pickZone = useCallback(

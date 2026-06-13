@@ -209,6 +209,31 @@ export function ensureDeliveryAddressWithZone(
   }
 }
 
+export function detectZoneInAddress(
+  text: string,
+  zones: DeliveryZoneOption[],
+): DeliveryZoneOption | null {
+  const trimmed = text.trim()
+  if (!trimmed || zones.length === 0) return null
+
+  const corrected = correctSettlementInAddress(trimmed, zones)
+  const prefixZone = resolveZoneFromAddressPrefix(corrected, zones)
+  if (prefixZone) return prefixZone
+
+  const normalText = trimmed
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[^\p{L}\p{N}\s.-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+  const sorted = [...zones].sort((a, b) => b.name.length - a.name.length)
+  for (const zone of sorted) {
+    const zoneName = zone.name.toLowerCase().replace(/ё/g, 'е')
+    if (zoneName && normalText.includes(zoneName)) return zone
+  }
+
+  return null
+}
+
 export function composeDeliveryAddress(zoneName: string, detail: string): string {
   const zone = zoneName.trim()
   const street = cleanupAddressDetail(detail)
