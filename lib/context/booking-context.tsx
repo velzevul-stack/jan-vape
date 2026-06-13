@@ -52,6 +52,7 @@ interface BookingContextType extends BookingState {
 const BookingContext = createContext<BookingContextType | undefined>(undefined)
 
 const BOOKING_STORAGE_KEY = 'vapestore-booking'
+const BOOKING_STORAGE_VERSION = 2
 
 const initialState: BookingState = {
   pickupLocationId: null,
@@ -68,13 +69,28 @@ const initialState: BookingState = {
 
 function migrateStoredBooking(parsed: Record<string, unknown>): Partial<BookingState> {
   const migrated: Partial<BookingState> = { ...parsed } as Partial<BookingState>
+  const storedVersion = Number(parsed.bookingStorageVersion ?? 0)
   if (!migrated.customerTelegram && typeof parsed.customerPhone === 'string') {
     migrated.customerTelegram = parsed.customerPhone
   }
-  if (typeof migrated.addressDraft !== 'string') {
-    migrated.addressDraft =
-      typeof parsed.customAddressText === 'string' ? parsed.customAddressText : ''
+
+  const draftAddress = typeof migrated.addressDraft === 'string' ? migrated.addressDraft.trim() : ''
+  const customAddress = typeof parsed.customAddressText === 'string' ? parsed.customAddressText.trim() : ''
+  const fullestAddress =
+    customAddress.length > draftAddress.length ? customAddress : draftAddress
+  if (fullestAddress) {
+    migrated.addressDraft = fullestAddress
+  } else if (typeof migrated.addressDraft !== 'string') {
+    migrated.addressDraft = ''
   }
+
+  if (storedVersion < BOOKING_STORAGE_VERSION) {
+    migrated.deliveryZone = null
+    migrated.deliveryZoneHint = null
+    migrated.customAddressText = null
+    return migrated
+  }
+
   if (parsed.deliveryZoneId && parsed.deliveryZoneName) {
     const zone: DeliveryZoneSelection = {
       id: String(parsed.deliveryZoneId),
@@ -115,6 +131,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         BOOKING_STORAGE_KEY,
         JSON.stringify({
           ...state,
+          bookingStorageVersion: BOOKING_STORAGE_VERSION,
           deliveryZoneId: state.deliveryZone?.id ?? state.deliveryZoneHint?.id ?? null,
           deliveryZoneName: state.deliveryZone?.name ?? state.deliveryZoneHint?.name ?? null,
           deliveryFee: state.deliveryZone?.deliveryFee ?? state.deliveryZoneHint?.deliveryFee ?? 0,

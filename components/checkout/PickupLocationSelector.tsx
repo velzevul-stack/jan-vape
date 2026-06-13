@@ -241,37 +241,42 @@ export function PickupLocationSelector({
 
   useEffect(() => {
     if (migratedRef.current || zones.length === 0) return
+
     const trimmed = addressDraft.trim()
-    if (!trimmed && !deliveryZoneHint) return
+    const fullAddress = (() => {
+      if (!trimmed) return ''
+      if (deliveryZoneHint) {
+        return composeDeliveryAddress(deliveryZoneHint.name, trimmed)
+      }
+      return trimmed
+    })()
+
+    if (!fullAddress && !deliveryZoneHint) return
 
     migratedRef.current = true
 
-    if (deliveryZoneHint) {
-      const zone =
-        zones.find((item) => item.id === deliveryZoneHint.id) ??
-        zones.find((item) => item.name === deliveryZoneHint.name)
-      if (zone && trimmed.includes(',')) {
-        const detail = extractAddressDetail(trimmed, zone, zones)
-        if (detail !== trimmed) {
-          setAddressDraft(detail)
-        }
-      }
-      setZonePanelOpen(false)
-      return
-    }
-
-    const ensured = ensureDeliveryAddressWithZone(trimmed, zones)
+    const ensured = ensureDeliveryAddressWithZone(fullAddress || trimmed, zones)
     if (ensured.zone) {
       applyZoneSelection(
         ensured.zone,
         extractAddressDetail(ensured.address, ensured.zone, zones),
       )
+      return
+    }
+
+    if (trimmed && !deliveryZoneHint) {
+      const detected = detectZoneInAddress(trimmed, zones)
+      if (detected) {
+        applyZoneSelection(
+          detected,
+          extractAddressDetail(trimmed, detected, zones),
+        )
+      }
     }
   }, [
     addressDraft,
     applyZoneSelection,
     deliveryZoneHint,
-    setAddressDraft,
     zones,
   ])
 

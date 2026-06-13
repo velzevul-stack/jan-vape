@@ -93,6 +93,57 @@ function fuzzyThreshold(variant: string): number {
   return 2
 }
 
+function stripAllZonesFromText(text: string, zones: DeliveryZoneLike[]): string {
+  let remaining = text.trim()
+  const variants = zones
+    .flatMap((zone) => tokenVariants(zone))
+    .filter((variant) => variant.length >= 3)
+    .sort((a, b) => b.length - a.length)
+  const seen = new Set<string>()
+  for (const variant of variants) {
+    if (seen.has(variant)) continue
+    seen.add(variant)
+    while (normalize(remaining).includes(variant)) {
+      remaining = stripZoneFromText(remaining, variant)
+    }
+  }
+  return remaining.replace(/^[,;\s]+|[,;\s]+$/g, '').trim()
+}
+
+function isDefaultDeliveryZone(zone: DeliveryZoneLike): boolean {
+  return (
+    zone.code === DEFAULT_DELIVERY_ZONE_CODE
+    || normalize(zone.name) === normalize('Ивацевичи')
+  )
+}
+
+function pickBestZoneMatch(
+  matches: Array<{ zone: DeliveryZoneLike; variant: string; score: number; exact: boolean }>,
+  zones: DeliveryZoneLike[],
+): { zone: DeliveryZoneLike; variant: string; score: number; exact: boolean } | undefined {
+  if (matches.length === 0) return undefined
+
+  matches.sort((a, b) => b.score - a.score)
+  const topScore = matches[0].score
+  const topMatches = matches.filter((match) => match.score >= topScore)
+  const distinctByZone = new Map<string, typeof matches[0]>()
+  for (const match of topMatches) {
+    const existing = distinctByZone.get(match.zone.id)
+    if (!existing || existing.score < match.score) {
+      distinctByZone.set(match.zone.id, match)
+    }
+  }
+  const distinct = Array.from(distinctByZone.values())
+  if (distinct.length > 1) {
+    const nonDefault = distinct.filter((match) => !isDefaultDeliveryZone(match.zone))
+    if (nonDefault.length > 0) {
+      nonDefault.sort((a, b) => b.score - a.score)
+      return nonDefault[0]
+    }
+  }
+  return matches[0]
+}
+
 export function findDeliveryZoneByName(
   zones: DeliveryZoneLike[],
   name: string,
@@ -165,8 +216,36 @@ export function resolveDeliveryZone(
   }
 
   matches.sort((a, b) => b.score - a.score)
-  const best = matches[0]
-  const addressDetail = stripZoneFromText(trimmed, best.variant)
+  const best = pickBestZoneMatch(matches, zones)
+  if (!best) {
+    const defaultZone = getDefaultDeliveryZone(zones)
+    if (defaultZone) {
+      const addressDetail = trimmed
+      return {
+        zoneId: defaultZone.id,
+        zoneName: defaultZone.name,
+        deliveryFee: Number(defaultZone.deliveryFee),
+        roundTripMinutes: defaultZone.roundTripMinutes,
+        addressDetail,
+        displayAddress: addressDetail
+          ? `${defaultZone.name}, ${addressDetail}`
+          : defaultZone.name,
+        confidence: 'none',
+        candidates: [],
+      }
+    }
+    return {
+      zoneId: '',
+      zoneName: '',
+      deliveryFee: 0,
+      roundTripMinutes: 0,
+      addressDetail: trimmed,
+      displayAddress: trimmed,
+      confidence: 'none',
+      candidates: [],
+    }
+  }
+  const addressDetail = stripAllZonesFromText(trimmed, zones)
   const displayAddress = addressDetail ? `${best.zone.name}, ${addressDetail}` : best.zone.name
   const candidateMap = new Map<string, { zoneId: string; zoneName: string; score: number }>()
   for (const match of matches) {

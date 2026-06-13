@@ -10,7 +10,11 @@ import {
   isDeliverySlotAvailable,
 } from '../src/lib/deliverySlotGuard'
 import { resolveDeliveryZone } from '../src/lib/deliveryZoneResolve'
-import { composeDeliveryAddress } from '../lib/deliveryAddressText'
+import {
+  composeDeliveryAddress,
+  detectZoneInAddress,
+  ensureDeliveryAddressWithZone,
+} from '../lib/deliveryAddressText'
 import { isUnavailableDeliveryPlace } from '../src/lib/unavailableDeliveryPlaces'
 
 assert.equal(halfRoundTripBlockMinutes(15), 10)
@@ -270,5 +274,29 @@ assert.equal(composeDeliveryAddress('Михновичи', 'Михновичи'),
 assert.equal(composeDeliveryAddress('Михновичи', 'михнович, Ленина 5'), 'Михновичи, Ленина 5')
 assert.equal(composeDeliveryAddress('Михновичи', 'михнович'), 'Михновичи')
 assert.equal(composeDeliveryAddress('Михновичи', 'Михновичи Ленина 5'), 'Михновичи, Ленина 5')
+
+const legacyAddress = 'Ивацевичи, д Яглевичи ул 4234'
+const legacyResolved = resolveDeliveryZone(legacyAddress, zonesForDetect)
+assert.ok(legacyResolved)
+assert.equal(legacyResolved?.zoneName, 'Яглевичи')
+assert.equal(legacyResolved?.roundTripMinutes, 20)
+
+const legacyClient = ensureDeliveryAddressWithZone(legacyAddress, zonesForDetect.map((z) => ({
+  id: z.id,
+  code: z.code,
+  name: z.name,
+  roundTripMinutes: z.roundTripMinutes,
+  deliveryFee: z.deliveryFee,
+})))
+assert.equal(legacyClient.zone?.name, 'Яглевичи')
+
+const legacyDetect = detectZoneInAddress(legacyAddress, zonesForDetect.map((z) => ({
+  id: z.id,
+  code: z.code,
+  name: z.name,
+  roundTripMinutes: z.roundTripMinutes,
+  deliveryFee: z.deliveryFee,
+})))
+assert.equal(legacyDetect?.name, 'Яглевичи')
 
 console.log('delivery tests passed')

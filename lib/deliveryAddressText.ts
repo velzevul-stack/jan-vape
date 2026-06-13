@@ -142,19 +142,67 @@ export function resolveZoneFromAddressPrefix(
   return findBestZoneMatch(prefix, zones)
 }
 
-function findZoneExplicitInText(
+function isDefaultDeliveryZone(zone: DeliveryZoneOption): boolean {
+  return (
+    zone.code === DEFAULT_DELIVERY_ZONE_CODE
+    || normalize(zone.name) === normalize('Ивацевичи')
+  )
+}
+
+function findZonesExplicitInText(text: string, zones: DeliveryZoneOption[]): DeliveryZoneOption[] {
+  const normalizedText = normalize(text)
+  const found: DeliveryZoneOption[] = []
+  for (const zone of zones) {
+    const variant = normalize(zone.name)
+    if (variant.length >= 3 && normalizedText.includes(variant)) {
+      found.push(zone)
+    }
+  }
+  return found
+}
+
+function resolveBestZoneFromText(
   text: string,
   zones: DeliveryZoneOption[],
 ): DeliveryZoneOption | null {
-  const normalizedText = normalize(text)
-  const sorted = [...zones].sort((a, b) => b.name.length - a.name.length)
-  for (const zone of sorted) {
-    const variant = normalize(zone.name)
-    if (variant && normalizedText.includes(variant)) {
-      return zone
+  const trimmed = text.trim()
+  if (!trimmed || zones.length === 0) return null
+
+  const inText = findZonesExplicitInText(trimmed, zones)
+  const nonDefaultInText = inText.filter((zone) => !isDefaultDeliveryZone(zone))
+
+  if (nonDefaultInText.length === 1) return nonDefaultInText[0]
+  if (nonDefaultInText.length > 1) {
+    return nonDefaultInText.sort((a, b) => b.name.length - a.name.length)[0]
+  }
+  if (inText.length === 1) return inText[0]
+
+  const corrected = correctSettlementInAddress(trimmed, zones)
+  const commaIndex = corrected.indexOf(',')
+  const prefix = (commaIndex >= 0 ? corrected.slice(0, commaIndex) : corrected).trim()
+  const suffix = commaIndex >= 0 ? corrected.slice(commaIndex + 1).trim() : ''
+
+  const prefixZone = resolveSettlementPrefixZone(prefix, zones)
+  if (prefixZone && suffix) {
+    const inSuffix = findZonesExplicitInText(suffix, zones).filter((zone) => !isDefaultDeliveryZone(zone))
+    if (inSuffix.length > 0 && isDefaultDeliveryZone(prefixZone)) {
+      return inSuffix[0]
     }
   }
-  return null
+
+  if (prefixZone) return prefixZone
+
+  for (const zone of [...zones]
+    .filter((item) => !isDefaultDeliveryZone(item))
+    .sort((a, b) => b.name.length - a.name.length)) {
+    const variant = normalize(zone.name)
+    if (variant && normalize(trimmed).includes(variant)) return zone
+  }
+
+  const fuzzyWhole = findBestZoneMatch(trimmed, zones)
+  if (fuzzyWhole && !isDefaultDeliveryZone(fuzzyWhole)) return fuzzyWhole
+
+  return findBestZoneMatch(prefix, zones) ?? fuzzyWhole
 }
 
 function resolveSettlementPrefixZone(
@@ -181,13 +229,13 @@ export function ensureDeliveryAddressWithZone(
 
   const defaultZone = getDefaultDeliveryZone(zones)
   const corrected = correctSettlementInAddress(trimmed, zones)
-  const explicitInText = findZoneExplicitInText(corrected, zones)
-  if (explicitInText) {
+  const bestZone = resolveBestZoneFromText(corrected, zones)
+  if (bestZone) {
     const detail = stripKnownZones(corrected, zones)
-    const address = detail ? `${explicitInText.name}, ${detail}` : explicitInText.name
+    const address = detail ? `${bestZone.name}, ${detail}` : bestZone.name
     return {
       address: correctSettlementInAddress(address, zones),
-      zone: explicitInText,
+      zone: bestZone,
     }
   }
 
@@ -213,25 +261,7 @@ export function detectZoneInAddress(
   text: string,
   zones: DeliveryZoneOption[],
 ): DeliveryZoneOption | null {
-  const trimmed = text.trim()
-  if (!trimmed || zones.length === 0) return null
-
-  const corrected = correctSettlementInAddress(trimmed, zones)
-  const prefixZone = resolveZoneFromAddressPrefix(corrected, zones)
-  if (prefixZone) return prefixZone
-
-  const normalText = trimmed
-    .toLowerCase()
-    .replace(/ё/g, 'е')
-    .replace(/[^\p{L}\p{N}\s.-]/gu, ' ')
-    .replace(/\s+/g, ' ')
-  const sorted = [...zones].sort((a, b) => b.name.length - a.name.length)
-  for (const zone of sorted) {
-    const zoneName = zone.name.toLowerCase().replace(/ё/g, 'е')
-    if (zoneName && normalText.includes(zoneName)) return zone
-  }
-
-  return null
+  return resolveBestZoneFromText(text, zones)
 }
 
 function stripZonePrefixFromDetail(zoneName: string, detail: string): string {
@@ -342,8 +372,8 @@ export function extractAddressDetail(
 
   const resolvedZone =
     zone ??
-    resolveZoneFromAddressPrefix(trimmed, zones) ??
-    findZoneExplicitInText(trimmed, zones)
+    resolveBestZoneFromText(trimmed, zones) ??
+    resolveZoneFromAddressPrefix(trimmed, zones)
 
   if (!resolvedZone) {
     return cleanupAddressDetail(stripKnownZones(trimmed, zones)) || trimmed
