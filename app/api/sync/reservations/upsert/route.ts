@@ -16,6 +16,10 @@ import {
 } from '@/src/lib/deliverySlotGuard'
 import { isUnavailableDeliveryPlace } from '@/src/lib/unavailableDeliveryPlaces'
 import { storeDayBounds } from '@/lib/dates'
+import {
+  generatePublicBookingNumber,
+  withPublicNumberRetry,
+} from '@/src/lib/publicBookingNumber'
 
 const ReservationItemSchema = z.object({
   externalId: z.number().int().positive(),
@@ -41,13 +45,6 @@ const ReservationSchema = z.object({
 const BodySchema = z.object({
   reservations: z.array(ReservationSchema).min(1),
 })
-
-function generatePublicNumber(): string {
-  const now = new Date()
-  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-  const rand = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-  return `B-${datePart}-${rand}`
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   return withSyncAuth(req, async (rawBody) => {
@@ -115,7 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       let existingBookingId: string | null = null
       let previousScheduledAt: Date | null = null
 
-      await ds.transaction(async (txn) => {
+      await withPublicNumberRetry(() => ds.transaction(async (txn) => {
         const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
         const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
         const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
@@ -257,7 +254,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         } else {
           await bookingRepo.save(
             bookingRepo.create({
-              publicNumber: generatePublicNumber(),
+              publicNumber: generatePublicBookingNumber(),
               source: 'app',
               customerName: reservation.customerName.trim(),
               customerTelegram: '@app',
@@ -277,7 +274,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             }),
           )
         }
-      })
+      }))
 
       if (existingBookingId) {
         try {

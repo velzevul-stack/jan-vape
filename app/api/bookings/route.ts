@@ -32,6 +32,10 @@ import {
   isScheduledAtBlocked,
 } from '@/src/lib/blockedSlots'
 import { storeDayBounds } from '@/lib/dates'
+import {
+  generatePublicBookingNumber,
+  withPublicNumberRetry,
+} from '@/src/lib/publicBookingNumber'
 
 const BookingSchema = z.object({
   pickupLocationId: z.string().uuid().optional(),
@@ -57,13 +61,6 @@ const BookingSchema = z.object({
   (d) => !d.pickupLocationId || !d.deliveryZoneId,
   'Use either pickup location or delivery zone',
 )
-
-function generatePublicNumber(): string {
-  const now = new Date()
-  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-  const rand = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-  return `B-${datePart}-${rand}`
-}
 
 interface SavedBookingResult {
   bookingId: string
@@ -126,7 +123,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let saved: SavedBookingResult | null = null
   let errorResponse: NextResponse | null = null
 
-  await ds.transaction(async (txn) => {
+  await withPublicNumberRetry(() => ds.transaction(async (txn) => {
     const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
     const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
     const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
@@ -290,7 +287,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const booking = bookingRepo.create({
-      publicNumber: generatePublicNumber(),
+      publicNumber: generatePublicBookingNumber(),
       source: 'web',
       customerName: data.customerName,
       customerTelegram,
@@ -335,7 +332,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         retailPriceSnapshot: item.retailPriceSnapshot,
       })),
     }
-  })
+  }))
 
   if (errorResponse) return errorResponse
   if (!saved) {
