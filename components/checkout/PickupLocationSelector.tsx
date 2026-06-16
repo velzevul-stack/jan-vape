@@ -144,7 +144,7 @@ export function PickupLocationSelector({
       if (suggestRef.current) clearTimeout(suggestRef.current)
       suggestRef.current = setTimeout(() => {
         const trimmed = value.trim()
-        if (trimmed.length >= 2) {
+        if (!deliveryZoneHint && trimmed.length >= 2) {
           const detected = detectZoneInAddress(trimmed, zones)
           if (detected) {
             applyZoneSelection(
@@ -167,6 +167,7 @@ export function PickupLocationSelector({
 
   const finalizeAddressInput = useCallback(
     (value: string) => {
+      if (deliveryZoneHint) return
       const trimmed = value.trim()
       if (trimmed.length < 2) return
       const detected = detectZoneInAddress(trimmed, zones)
@@ -177,7 +178,7 @@ export function PickupLocationSelector({
         )
       }
     },
-    [applyZoneSelection, zones],
+    [applyZoneSelection, deliveryZoneHint, zones],
   )
 
   const pickZone = useCallback(
@@ -381,6 +382,9 @@ export function PickupLocationSelector({
                 {deliveryZoneHint.deliveryFee > 0
                   ? formatPrice(deliveryZoneHint.deliveryFee)
                   : 'бесплатно'}
+                {deliveryZoneHint.roundTripMinutes > 5 && (
+                  <span>{' · '}в пути ~{deliveryZoneHint.roundTripMinutes} мин</span>
+                )}
               </p>
               <button
                 type="button"
@@ -446,33 +450,6 @@ export function PickupLocationSelector({
             <p className="mb-3 text-center text-xs text-text-muted sm:text-sm">
               Напишите адрес или название места — куда привезти заказ
             </p>
-            {deliveryZoneHint && (
-              <div
-                className="mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-xl border border-accent-primary/25 bg-accent-primary/10 px-3 py-2.5 text-center text-sm"
-              >
-                <span className="inline-flex items-center gap-1.5 font-semibold text-text-on-dark">
-                  <MapPin className="h-4 w-4 shrink-0 text-accent-primary" />
-                  {deliveryZoneHint.name}
-                </span>
-                <span className="text-text-muted">
-                  {deliveryZoneHint.deliveryFee > 0
-                    ? formatPrice(deliveryZoneHint.deliveryFee)
-                    : 'бесплатно'}
-                </span>
-                {deliveryZoneHint.roundTripMinutes > 5 && (
-                  <span className="text-xs text-text-muted">
-                    · в пути ~{deliveryZoneHint.roundTripMinutes} мин
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setZonePanelOpen(true)}
-                  className="text-xs text-accent-soft underline-offset-2 hover:underline"
-                >
-                  изменить
-                </button>
-              </div>
-            )}
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center sm:left-4">
                 <Truck className="h-4 w-4 text-accent-primary sm:h-5 sm:w-5" />

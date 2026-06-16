@@ -299,4 +299,18 @@ const legacyDetect = detectZoneInAddress(legacyAddress, zonesForDetect.map((z) =
 })))
 assert.equal(legacyDetect?.name, 'Яглевичи')
 
+const lavkiNotPanki = detectZoneInAddress('Лавки', zonesForDetect.map((z) => ({
+  id: z.id,
+  code: z.code,
+  name: z.name,
+  roundTripMinutes: z.roundTripMinutes,
+  deliveryFee: z.deliveryFee,
+})))
+assert.equal(lavkiNotPanki?.name, undefined)
+
+const lavkiResolved = resolveDeliveryZone('Лавки', zonesForDetect)
+assert.ok(lavkiResolved)
+assert.equal(lavkiResolved?.zoneName, 'Ивацевичи')
+assert.notEqual(lavkiResolved?.zoneName, 'Панки')
+
 console.log('delivery tests passed')

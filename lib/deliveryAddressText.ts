@@ -47,9 +47,19 @@ function levenshtein(a: string, b: string): number {
 }
 
 function fuzzyThreshold(variant: string): number {
-  if (variant.length <= 4) return 1
-  if (variant.length <= 7) return 2
+  if (variant.length <= 3) return 0
+  if (variant.length <= 8) return 1
   return 2
+}
+
+function isFuzzySettlementMatch(token: string, variant: string): boolean {
+  if (token === variant) return true
+  const distance = levenshtein(token, variant)
+  if (distance > fuzzyThreshold(variant)) return false
+  if (distance === 0) return true
+  if (token.startsWith(variant) || variant.startsWith(token)) return true
+  if (token[0] === variant[0]) return true
+  return false
 }
 
 function findBestZoneMatch(
@@ -63,10 +73,8 @@ function findBestZoneMatch(
   for (const zone of zones) {
     const variant = normalize(zone.name)
     if (norm === variant) return zone
-    const distance = levenshtein(norm, variant)
-    const threshold = fuzzyThreshold(variant)
-    if (distance <= threshold && (!best || distance < best.distance)) {
-      best = { zone, distance }
+    if (isFuzzySettlementMatch(norm, variant) && (!best || levenshtein(norm, variant) < best.distance)) {
+      best = { zone, distance: levenshtein(norm, variant) }
     }
   }
   return best?.zone ?? null
@@ -214,7 +222,7 @@ function resolveSettlementPrefixZone(
   const normPrefix = normalize(prefix)
   const normName = normalize(matched.name)
   if (normPrefix === normName) return matched
-  if (levenshtein(normPrefix, normName) <= fuzzyThreshold(normName)) return matched
+  if (isFuzzySettlementMatch(normPrefix, normName)) return matched
   return null
 }
 
@@ -279,7 +287,7 @@ function stripZonePrefixFromDetail(zoneName: string, detail: string): string {
     const normPrefix = normalize(prefix)
     if (
       normPrefix === normZone
-      || levenshtein(normPrefix, normZone) <= fuzzyThreshold(normZone)
+      || isFuzzySettlementMatch(normPrefix, normZone)
     ) {
       return cleanupAddressDetail(suffix)
     }
@@ -298,7 +306,7 @@ function stripZonePrefixFromDetail(zoneName: string, detail: string): string {
     const normPrefix = normalize(prefix)
     if (
       normPrefix === normZone
-      || levenshtein(normPrefix, normZone) <= fuzzyThreshold(normZone)
+      || isFuzzySettlementMatch(normPrefix, normZone)
     ) {
       return cleanupAddressDetail(trimmed.slice(spaceIndex + 1).trim())
     }
@@ -307,7 +315,7 @@ function stripZonePrefixFromDetail(zoneName: string, detail: string): string {
   if (
     commaIndex < 0
     && spaceIndex < 0
-    && levenshtein(normDetail, normZone) <= fuzzyThreshold(normZone)
+    && isFuzzySettlementMatch(normDetail, normZone)
   ) {
     return ''
   }
@@ -327,7 +335,7 @@ function detailAlreadyIncludesZone(zoneName: string, detail: string): boolean {
   const prefix = (commaIndex >= 0 ? trimmed.slice(0, commaIndex) : trimmed).trim()
   const normPrefix = normalize(prefix)
   if (normPrefix === normZone) return true
-  if (normPrefix && levenshtein(normPrefix, normZone) <= fuzzyThreshold(normZone)) return true
+  if (normPrefix && isFuzzySettlementMatch(normPrefix, normZone)) return true
 
   if (normDetail.startsWith(normZone + ',') || normDetail.startsWith(normZone + ' ')) return true
   if (normDetail.endsWith(' ' + normZone) || normDetail.endsWith(', ' + normZone)) return true

@@ -88,9 +88,19 @@ function stripZoneFromText(text: string, variant: string): string {
 }
 
 function fuzzyThreshold(variant: string): number {
-  if (variant.length <= 4) return 1
-  if (variant.length <= 7) return 2
+  if (variant.length <= 3) return 0
+  if (variant.length <= 8) return 1
   return 2
+}
+
+function isFuzzySettlementMatch(token: string, variant: string): boolean {
+  if (token === variant) return true
+  const distance = levenshtein(token, variant)
+  if (distance > fuzzyThreshold(variant)) return false
+  if (distance === 0) return true
+  if (token.startsWith(variant) || variant.startsWith(token)) return true
+  if (token[0] === variant[0]) return true
+  return false
 }
 
 function stripAllZonesFromText(text: string, zones: DeliveryZoneLike[]): string {
@@ -178,8 +188,8 @@ export function resolveDeliveryZone(
       const words = normalizedText.split(' ')
       for (const word of words) {
         if (word.length < 3) continue
-        const distance = levenshtein(word, variant)
-        if (distance <= fuzzyThreshold(variant)) {
+        if (isFuzzySettlementMatch(word, variant)) {
+          const distance = levenshtein(word, variant)
           matches.push({ zone, variant, score: 80 - distance * 10, exact: false })
         }
       }
