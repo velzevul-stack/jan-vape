@@ -93,7 +93,7 @@ export const categoryLabels: Record<ProductCategory, string> = {
   liquid: 'Жидкости',
   disposable: 'Одноразки',
   vape: 'Устройства',
-  snus: 'Снюс',
+  snus: 'Паучи',
   consumable: 'Расходники',
 }
 

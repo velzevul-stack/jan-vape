@@ -30,7 +30,7 @@ export function HeroSection() {
         </h1>
 
         <p className="hero-line mt-3 max-w-xl text-sm text-text-muted sm:mt-5 sm:text-base md:text-lg">
-          Жидкости, одноразки, поды и снюс — бронь онлайн, оплата при получении.
+          Жидкости, одноразки, поды и паучи — бронь онлайн, оплата при получении.
         </p>
 
         <div className="hero-line mt-4 hidden gap-3 sm:grid sm:grid-cols-3">

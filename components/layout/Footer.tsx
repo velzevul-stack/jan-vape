@@ -18,7 +18,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               </span>
             </Link>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-text-muted">
-              Жидкости, одноразки, устройства, снюс. Бронирование онлайн, оплата при получении.
+              Жидкости, одноразки, устройства, паучи. Бронирование онлайн, оплата при получении.
             </p>
             <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border-on-dark bg-elevated px-3 py-2 text-xs text-text-muted">
               <MapPin className="h-3.5 w-3.5 text-accent-primary" />

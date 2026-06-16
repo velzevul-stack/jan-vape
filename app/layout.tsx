@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Jan-Vape — Бронирование | Ивацевичи',
   description: 'Jan-Vape: выберите товары и забронируйте для получения в магазине в Ивацевичах. Без предоплаты.',
-  keywords: ['Jan-Vape', 'vape', 'вейп', 'Ивацевичи', 'жидкости', 'снюс', 'бронирование', 'самовывоз'],
+  keywords: ['Jan-Vape', 'vape', 'вейп', 'Ивацевичи', 'жидкости', 'паучи', 'бронирование', 'самовывоз'],
   generator: 'v0.app',
   icons: {
     icon: [
