@@ -112,7 +112,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       let existingBookingId: string | null = null
       let previousScheduledAt: Date | null = null
 
-      await withPublicNumberRetry(() => ds.transaction(async (txn) => {
+      try {
+        await withPublicNumberRetry(() => ds.transaction(async (txn) => {
         const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
         const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
         const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
@@ -275,6 +276,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           )
         }
       }))
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        if (message === 'delivery_slot_busy' || message === 'delivery_place_unavailable') {
+          return NextResponse.json(
+            { error: message, code: message, appReservationId: reservation.appReservationId },
+            { status: 409 },
+          )
+        }
+        throw err
+      }
 
       if (existingBookingId) {
         try {
