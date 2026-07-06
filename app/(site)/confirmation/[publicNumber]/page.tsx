@@ -9,6 +9,7 @@ import { formatPrice, formatDate } from '@/lib/mock-data'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { PageContainer } from '@/components/layout/PageContainer'
+import { CashOnlyNotice } from '@/components/checkout/CashOnlyNotice'
 
 interface ConfirmationItem {
   brand: string
@@ -118,6 +119,8 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
               Продавец подтверждает каждую бронь вручную. Это обычно занимает несколько минут.
             </p>
           </div>
+
+          <CashOnlyNotice className="mb-6" />
 
           <div className="mb-4">
             <h3 className="mb-3 font-display text-xs font-bold tracking-[0.22em] text-text-faint">
@@ -236,10 +239,6 @@ export default function ConfirmationPage({ params }: ConfirmationPageProps) {
           >
             Вернуться в каталог
           </Link>
-
-          <p className="mt-4 text-center text-sm text-text-muted">
-            Оплата при получении в магазине
-          </p>
         </PageContainer>
       </main>
 

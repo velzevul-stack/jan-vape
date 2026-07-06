@@ -14,6 +14,7 @@ import { Footer } from '@/components/layout/Footer'
 import { DatePickerStrip } from '@/components/checkout/DatePickerStrip'
 import { TimeSlotGrid } from '@/components/checkout/TimeSlotGrid'
 import { ContactForm } from '@/components/checkout/ContactForm'
+import { CashOnlyNotice } from '@/components/checkout/CashOnlyNotice'
 import { CartProductLines } from '@/components/cart/CartProductLines'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { isValidTelegramUsername, normalizeTelegramUsername } from '@/lib/telegram'
@@ -572,12 +573,14 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="mb-6 flex items-center justify-between border-t border-border-on-dark pt-4">
+                <div className="mb-4 flex items-center justify-between border-t border-border-on-dark pt-4">
                   <span className="font-display font-bold tracking-wider text-text-muted">ИТОГО</span>
                   <span className="font-display text-3xl font-extrabold tabular-nums text-text-on-dark">
                     {formatPrice(orderTotal)}
                   </span>
                 </div>
+
+                <CashOnlyNotice className="mb-4" />
 
                 <button
                   onClick={handleSubmit}
@@ -603,10 +606,6 @@ export default function CheckoutPage() {
                     </>
                   )}
                 </button>
-
-                <p className="mt-4 text-center text-xs text-text-faint">
-                  Оплата при получении
-                </p>
               </div>
             </div>
           </div>
@@ -622,6 +621,7 @@ export default function CheckoutPage() {
             {submitError}
           </p>
         )}
+        <CashOnlyNotice compact className="mb-3" />
         <div className="flex items-center gap-3">
           <div className="shrink-0">
             <p className="text-[10px] font-bold tracking-[0.15em] text-text-muted">ИТОГО</p>
