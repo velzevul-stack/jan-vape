@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { tgSessionCookieName, verifyTgSession } from '@/src/lib/tgSession'
 import { isTelegramVerified } from '@/src/lib/telegramVerification'
-import { UNVERIFIED_MAX_CART_QUANTITY } from '@/src/lib/unverifiedLimits'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const session = verifyTgSession(req.cookies.get(tgSessionCookieName())?.value)
@@ -30,6 +29,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     verified: false,
-    maxCartQuantity: UNVERIFIED_MAX_CART_QUANTITY,
+    maxCartQuantity: null,
   })
 }

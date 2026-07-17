@@ -4,7 +4,6 @@ import { telegramLookupKey } from './telegramBooking'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { isTelegramVerified } from './telegramVerification'
 
-export const UNVERIFIED_MAX_CART_QUANTITY = 5
 export const UNVERIFIED_MAX_ACTIVE_BOOKINGS = 1
 
 export async function countActiveBookingsForTelegram(customerTelegram: string): Promise<number> {
@@ -35,16 +34,4 @@ export async function assertUnverifiedBookingAllowed(
   }
 
   return { ok: true }
-}
-
-export function assertUnverifiedCartQuantity(
-  totalQuantity: number,
-  verified: boolean,
-): { ok: true } | { ok: false; message: string } {
-  if (verified) return { ok: true }
-  if (totalQuantity <= UNVERIFIED_MAX_CART_QUANTITY) return { ok: true }
-  return {
-    ok: false,
-    message: `Без подтверждённого Telegram в корзине можно не более ${UNVERIFIED_MAX_CART_QUANTITY} товаров. Подтвердите Telegram или уменьшите количество.`,
-  }
 }

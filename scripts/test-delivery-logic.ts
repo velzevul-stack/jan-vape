@@ -202,6 +202,10 @@ assert.equal(isUnavailableDeliveryPlace('домашний'), true)
 assert.equal(isUnavailableDeliveryPlace('на хабзу'), true)
 assert.equal(isUnavailableDeliveryPlace('Механизаторов 7'), true)
 assert.equal(isUnavailableDeliveryPlace('Депутатская 47'), true)
+assert.equal(isUnavailableDeliveryPlace('Парк возле Евроопта'), true)
+assert.equal(isUnavailableDeliveryPlace('Парковая 2'), true)
+assert.equal(isUnavailableDeliveryPlace('Евроопт Парковая'), true)
+assert.equal(isUnavailableDeliveryPlace('Бич двор'), true)
 assert.equal(isUnavailableDeliveryPlace('Алексейки'), false)
 
 const result = resolveDeliveryZone('заполье, ул. Лесная 3', [{

@@ -1,7 +1,5 @@
 import { normalizeTelegramUsername } from '@/lib/telegram'
 
-export const UNVERIFIED_MAX_CART_QUANTITY = 5
-
 const TG_SESSION_KEY = 'tg_verified_v1'
 
 export type TgSessionInfo = {
@@ -44,8 +42,7 @@ function mapSession(data: Record<string, unknown> | null): TgSessionInfo {
   if (!data?.verified) {
     return {
       verified: false,
-      maxCartQuantity:
-        typeof data?.maxCartQuantity === 'number' ? data.maxCartQuantity : UNVERIFIED_MAX_CART_QUANTITY,
+      maxCartQuantity: typeof data?.maxCartQuantity === 'number' ? data.maxCartQuantity : null,
     }
   }
   const tg =
@@ -60,7 +57,7 @@ function mapSession(data: Record<string, unknown> | null): TgSessionInfo {
 
 export async function fetchTgSession(): Promise<TgSessionInfo> {
   if (typeof window === 'undefined') {
-    return { verified: false, maxCartQuantity: UNVERIFIED_MAX_CART_QUANTITY }
+    return { verified: false, maxCartQuantity: null }
   }
 
   const params = new URLSearchParams(window.location.search)
@@ -107,6 +104,6 @@ export async function fetchTgSession(): Promise<TgSessionInfo> {
     }
     return info
   } catch {
-    return { verified: false, maxCartQuantity: UNVERIFIED_MAX_CART_QUANTITY }
+    return { verified: false, maxCartQuantity: null }
   }
 }

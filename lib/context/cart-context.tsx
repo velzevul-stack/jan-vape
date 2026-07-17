@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { type Product, type CartItem, productAvailableStock } from '@/lib/mock-data'
 import { resolveCartLinesAgainstCatalog } from '@/lib/api/catalogClient'
-import { fetchTgSession, UNVERIFIED_MAX_CART_QUANTITY } from '@/lib/tgSessionClient'
+import { fetchTgSession } from '@/lib/tgSessionClient'
 
 interface CartContextType {
   items: CartItem[]
@@ -28,7 +28,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
   const [isTgVerified, setIsTgVerified] = useState(false)
-  const [maxCartQuantity, setMaxCartQuantity] = useState<number | null>(UNVERIFIED_MAX_CART_QUANTITY)
+  const [maxCartQuantity, setMaxCartQuantity] = useState<number | null>(null)
   const [cartLimitMessage, setCartLimitMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         setIsTgVerified(false)
-        setMaxCartQuantity(UNVERIFIED_MAX_CART_QUANTITY)
+        setMaxCartQuantity(null)
       })
   }, [])
 

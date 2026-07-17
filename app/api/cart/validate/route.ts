@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import { isSessionVerified, isTelegramVerified } from '@/src/lib/telegramVerification'
-import {
-  UNVERIFIED_MAX_CART_QUANTITY,
-  assertUnverifiedCartQuantity,
-} from '@/src/lib/unverifiedLimits'
 
 const BodySchema = z.object({
   totalQuantity: z.number().int().min(0),
@@ -34,21 +30,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     isVerified = await isTelegramVerified(customerTelegram, req)
   }
 
-  const cartCheck = assertUnverifiedCartQuantity(parsed.data.totalQuantity, isVerified)
-  if (!cartCheck.ok) {
-    return NextResponse.json(
-      {
-        error: cartCheck.message,
-        code: 'unverified_cart_limit',
-        maxQuantity: UNVERIFIED_MAX_CART_QUANTITY,
-      },
-      { status: 422 },
-    )
-  }
-
   return NextResponse.json({
     ok: true,
     verified: isVerified,
-    maxCartQuantity: isVerified ? null : UNVERIFIED_MAX_CART_QUANTITY,
+    maxCartQuantity: null,
   })
 }

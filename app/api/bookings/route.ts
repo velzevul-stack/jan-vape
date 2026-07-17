@@ -12,8 +12,7 @@ import {
 } from '@/src/lib/customerStats'
 import { ensureTelegramCustomer, isTelegramCustomerBlocked } from '@/src/lib/telegramCustomer'
 import { tgSessionCookieName, telegramFromSession, verifyTgSession } from '@/src/lib/tgSession'
-import { assertUnverifiedBookingAllowed, assertUnverifiedCartQuantity } from '@/src/lib/unverifiedLimits'
-import { isTelegramVerified } from '@/src/lib/telegramVerification'
+import { assertUnverifiedBookingAllowed } from '@/src/lib/unverifiedLimits'
 import { normalizeTelegramUsername } from '@/lib/telegram'
 import {
   buildZoneMinutesMap,
@@ -104,13 +103,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (await isTelegramCustomerBlocked(customerTelegram)) {
     return NextResponse.json({ error: 'Booking is not available for this account' }, { status: 403 })
-  }
-
-  const totalQuantity = data.items.reduce((sum, item) => sum + item.quantity, 0)
-  const verified = await isTelegramVerified(customerTelegram, req)
-  const cartCheck = assertUnverifiedCartQuantity(totalQuantity, verified)
-  if (!cartCheck.ok) {
-    return NextResponse.json({ error: cartCheck.message, code: 'unverified_cart_limit' }, { status: 422 })
   }
 
   const bookingCheck = await assertUnverifiedBookingAllowed(customerTelegram, req)
