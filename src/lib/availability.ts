@@ -1,8 +1,7 @@
 import type { EntityManager, Repository } from 'typeorm'
 import { getRepo } from './db'
-import { entityTableNames } from './db'
-import type { ProductSnapshot } from '../entities/ProductSnapshot'
-import type { WebBooking } from '../entities/WebBooking'
+import { ProductSnapshot } from '../entities/ProductSnapshot'
+import { WebBooking } from '../entities/WebBooking'
 
 export type BookingStockItem = {
   productId: string
@@ -70,10 +69,10 @@ export async function findBookingStockIssues(
   if (items.length === 0) return []
 
   const productRepo = manager
-    ? manager.getRepository(entityTableNames.ProductSnapshot)
+    ? manager.getRepository(ProductSnapshot)
     : await getRepo('ProductSnapshot')
   const bookingRepo = manager
-    ? manager.getRepository(entityTableNames.WebBooking)
+    ? manager.getRepository(WebBooking)
     : await getRepo('WebBooking')
 
   const productIds = Array.from(new Set(items.map((i) => i.productId)))

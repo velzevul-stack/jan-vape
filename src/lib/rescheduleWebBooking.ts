@@ -1,8 +1,9 @@
 import { revalidatePath } from 'next/cache'
 import { In } from 'typeorm'
-import type { WebBooking } from '@/src/entities/WebBooking'
+import { WebBooking } from '@/src/entities/WebBooking'
 import { normalizeAddress } from './normalize'
 import { entityTableNames, getDataSource, getRepo } from './db'
+import { DeliveryZone } from '@/src/entities/DeliveryZone'
 import { enqueueNotification } from './notifier'
 import { enrichUserbotPayload } from './customerTelegramUserId'
 import {
@@ -50,7 +51,7 @@ export async function rescheduleWebBooking(
   await ds.transaction(async (txn) => {
     const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
     const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
-    const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
+    const bookingRepo = txn.getRepository(WebBooking)
 
     if (input.pickupLocationId) {
       const loc = await locationRepo.findOne({ where: { id: input.pickupLocationId } })
@@ -108,7 +109,7 @@ export async function rescheduleWebBooking(
         throw new Error('Time slot is blocked')
       }
 
-      const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
+      const zoneRepo = txn.getRepository(DeliveryZone)
       const zones = await zoneRepo.find({ where: { isActive: true } })
       const zoneMinutesById = buildZoneMinutesMap(zones)
       const zoneSingleSlotById = buildZoneSingleSlotMap(zones)

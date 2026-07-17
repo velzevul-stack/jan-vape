@@ -34,7 +34,7 @@ export function loadDevEnv(): void {
   }
 
   if (process.env.NODE_ENV === undefined) {
-    process.env.NODE_ENV = 'development'
+    (process.env as Record<string, string>).NODE_ENV = 'development'
   }
 
   const url = process.env.DATABASE_URL?.trim() ?? ''

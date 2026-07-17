@@ -3,10 +3,13 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { In } from 'typeorm'
 import { withSyncAuth } from '@/src/lib/sync/syncAuth'
-import { entityTableNames, getDataSource, getRepo } from '@/src/lib/db'
+import { getDataSource, getRepo } from '@/src/lib/db'
 import { normalizeAddress } from '@/src/lib/normalize'
-import { findDeliveryZoneByName } from '@/src/lib/deliveryZoneResolve'
-import type { WebBookingStatus } from '@/src/entities/WebBooking'
+import { findDeliveryZoneByName, type DeliveryZoneLike } from '@/src/lib/deliveryZoneResolve'
+import { WebBooking, type WebBookingStatus } from '@/src/entities/WebBooking'
+import { DeliveryZone } from '@/src/entities/DeliveryZone'
+import { CustomAddress } from '@/src/entities/CustomAddress'
+import { PickupLocation } from '@/src/entities/PickupLocation'
 import { notifyBookingItemsChangedIfNeeded } from '@/src/lib/bookingItemsChangedNotify'
 import { notifyBookingRescheduled } from '@/src/lib/rescheduleWebBooking'
 import {
@@ -104,20 +107,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       }
 
-      let previousItems: Array<{
-        productId: string
-        quantity: number
-        retailPriceSnapshot: number
-      }> = []
-      let existingBookingId: string | null = null
-      let previousScheduledAt: Date | null = null
+      type PreviousBookingState = {
+        previousItems: Array<{
+          productId: string
+          quantity: number
+          retailPriceSnapshot: number
+        }>
+        existingBookingId: string | null
+        previousScheduledAt: Date | null
+      }
+
+      let previousItems: PreviousBookingState['previousItems'] = []
+      let existingBookingId: PreviousBookingState['existingBookingId'] = null
+      let previousScheduledAt: PreviousBookingState['previousScheduledAt'] = null
 
       try {
-        await withPublicNumberRetry(() => ds.transaction(async (txn) => {
-        const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
-        const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
-        const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
-        const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
+        const previousState = await withPublicNumberRetry(() => ds.transaction(async (txn): Promise<PreviousBookingState> => {
+        const bookingRepo = txn.getRepository(WebBooking)
+        const zoneRepo = txn.getRepository(DeliveryZone)
+        const addressRepo = txn.getRepository(CustomAddress)
+        const locationRepo = txn.getRepository(PickupLocation)
 
         const existingByWebId = reservation.webBookingId
           ? await bookingRepo.findOne({ where: { id: reservation.webBookingId } })
@@ -137,7 +146,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const zones = await zoneRepo.find({ where: { isActive: true } })
 
         const applyDeliveryZone = async (
-          zone: (typeof zones)[number],
+          zone: DeliveryZoneLike,
           addressDetail: string | null,
         ) => {
           deliveryZoneId = zone.id
@@ -229,10 +238,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const bookingTotal = totalAmount + deliveryFee
 
         if (existing) {
-          previousItems = [...(existing.items ?? [])]
-          existingBookingId = existing.id
-          previousScheduledAt = existing.scheduledAt ? new Date(existing.scheduledAt) : null
-          const updateData: Record<string, unknown> = {
+          const updateData: Partial<WebBooking> = {
             customerName: reservation.customerName.trim(),
             scheduledAt,
             items: mappedItems,
@@ -252,30 +258,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             updateData.comment = reservation.place
           }
           await bookingRepo.update(existing.id, updateData)
-        } else {
-          await bookingRepo.save(
-            bookingRepo.create({
-              publicNumber: generatePublicBookingNumber(),
-              source: 'app',
-              customerName: reservation.customerName.trim(),
-              customerTelegram: '@app',
-              customerTelegramUserId: null,
-              comment: reservation.place ?? null,
-              scheduledAt,
-              locationId,
-              customAddressId,
-              deliveryZoneId,
-              deliveryFee,
-              roundTripMinutes,
-              items: mappedItems,
-              totalAmount: bookingTotal,
-              status,
-              appReservationId: reservation.appReservationId,
-              syncedToAppAt: new Date(),
-            }),
-          )
+          return {
+            previousItems: [...(existing.items ?? [])],
+            existingBookingId: existing.id,
+            previousScheduledAt: existing.scheduledAt ? new Date(existing.scheduledAt) : null,
+          }
         }
+
+        await bookingRepo.save(
+          bookingRepo.create({
+            publicNumber: generatePublicBookingNumber(),
+            source: 'app',
+            customerName: reservation.customerName.trim(),
+            customerTelegram: '@app',
+            customerTelegramUserId: null,
+            comment: reservation.place ?? null,
+            scheduledAt,
+            locationId,
+            customAddressId,
+            deliveryZoneId,
+            deliveryFee,
+            roundTripMinutes,
+            items: mappedItems,
+            totalAmount: bookingTotal,
+            status,
+            appReservationId: reservation.appReservationId,
+            syncedToAppAt: new Date(),
+          }),
+        )
+        return { previousItems: [], existingBookingId: null, previousScheduledAt: null }
       }))
+        previousItems = previousState.previousItems
+        existingBookingId = previousState.existingBookingId
+        previousScheduledAt = previousState.previousScheduledAt
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         if (message === 'delivery_slot_busy' || message === 'delivery_place_unavailable') {

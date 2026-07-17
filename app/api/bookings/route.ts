@@ -3,7 +3,9 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { normalizeAddress } from '@/src/lib/normalize'
 import { In } from 'typeorm'
-import { entityTableNames, getDataSource } from '@/src/lib/db'
+import { entityTableNames, getDataSource, getRepo } from '@/src/lib/db'
+import { WebBooking } from '@/src/entities/WebBooking'
+import { DeliveryZone } from '@/src/entities/DeliveryZone'
 import { findBookingStockIssues } from '@/src/lib/availability'
 import { enqueueNotification } from '@/src/lib/notifier'
 import {
@@ -118,8 +120,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   await withPublicNumberRetry(() => ds.transaction(async (txn) => {
     const locationRepo = txn.getRepository(entityTableNames.PickupLocation)
     const addressRepo = txn.getRepository(entityTableNames.CustomAddress)
-    const zoneRepo = txn.getRepository(entityTableNames.DeliveryZone)
-    const bookingRepo = txn.getRepository(entityTableNames.WebBooking)
+    const zoneRepo = txn.getRepository(DeliveryZone)
+    const bookingRepo = txn.getRepository(WebBooking)
 
     let locationId: string | null = null
     let customAddressId: string | null = null
@@ -333,7 +335,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const savedBooking = saved as SavedBookingResult
 
-  const productRepo = (await getDataSource()).getRepository(entityTableNames.ProductSnapshot)
+  const productRepo = await getRepo('ProductSnapshot')
   const productIds = Array.from(new Set(savedBooking.itemsSnapshot.map((i) => i.productId)))
   const products =
     productIds.length > 0 ? await productRepo.find({ where: { id: In(productIds) } }) : []
